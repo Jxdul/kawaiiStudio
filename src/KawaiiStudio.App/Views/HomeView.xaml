@@ -1,0 +1,12 @@
+<UserControl x:Class="KawaiiStudio.App.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#0B0B0B">
+  <Grid>
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="Kawaii Studio" FontSize="48" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,16" />
+      <Button Content="Tap to Start" Command="{Binding StartCommand}" FontSize="24" Padding="28,12" Margin="0,0,0,8" />
+      <TextBlock Text="View available frames and backgrounds" FontSize="14" Foreground="#B8B8B8" HorizontalAlignment="Center" />
+    </StackPanel>
+  </Grid>
+</UserControl>

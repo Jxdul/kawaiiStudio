@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KawaiiStudio.App", "src\\KawaiiStudio.App\\KawaiiStudio.App.csproj", "{40D6D77F-0043-49B3-8FC9-2FDAAEF3703C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{40D6D77F-0043-49B3-8FC9-2FDAAEF3703C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40D6D77F-0043-49B3-8FC9-2FDAAEF3703C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40D6D77F-0043-49B3-8FC9-2FDAAEF3703C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40D6D77F-0043-49B3-8FC9-2FDAAEF3703C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3FA2D218-DE42-4E9B-9FA1-0EFF482EE4F8}
+	EndGlobalSection
+EndGlobal
