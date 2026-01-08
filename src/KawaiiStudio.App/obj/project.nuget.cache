@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "ErC1aFcEdaE=",
+  "dgSpecHash": "hwfeBw9/46E=",
   "success": true,
-  "projectFilePath": "/Users/jadylposadas/Projects/kawaiiStudio/src/KawaiiStudio.App/KawaiiStudio.App.csproj",
+  "projectFilePath": "C:\\Users\\posad\\Projects\\kawaiiStudio\\src\\KawaiiStudio.App\\KawaiiStudio.App.csproj",
   "expectedPackageFiles": [
-    "/Users/jadylposadas/.nuget/packages/microsoft.netcore.app.ref/8.0.22/microsoft.netcore.app.ref.8.0.22.nupkg.sha512",
-    "/Users/jadylposadas/.nuget/packages/microsoft.windowsdesktop.app.ref/8.0.22/microsoft.windowsdesktop.app.ref.8.0.22.nupkg.sha512",
-    "/Users/jadylposadas/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.22/microsoft.aspnetcore.app.ref.8.0.22.nupkg.sha512",
-    "/Users/jadylposadas/.nuget/packages/microsoft.netcore.app.host.osx-arm64/8.0.22/microsoft.netcore.app.host.osx-arm64.8.0.22.nupkg.sha512"
+    "C:\\Users\\posad\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.22\\microsoft.netcore.app.ref.8.0.22.nupkg.sha512",
+    "C:\\Users\\posad\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.22\\microsoft.windowsdesktop.app.ref.8.0.22.nupkg.sha512",
+    "C:\\Users\\posad\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.22\\microsoft.aspnetcore.app.ref.8.0.22.nupkg.sha512",
+    "C:\\Users\\posad\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.22\\microsoft.netcore.app.host.win-x64.8.0.22.nupkg.sha512"
   ],
   "logs": []
 }
