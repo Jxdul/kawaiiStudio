@@ -1,0 +1,648 @@
+# Photobooth App — Product Requirements & Technical Specification (v0.1)
+
+**Owner:** Jadyl
+**Last updated:** January 8, 2026
+**Status:** Draft (build-ready spec)
+
+---
+
+## 1) Purpose
+
+Build a **kiosk-style photobooth application** that guides a customer from **Start → Size → Quantity → Layout/Frame → Payment → Capture → Select Photos → Print + QR → Thank You → Home**, with a **secret staff menu** for configuration, diagnostics, reprints, and logs.
+
+The app must be **themeable** and **frame-driven by folders**, so new frames and UI assets can be added without changing code.
+
+---
+
+## 2) Goals
+
+### 2.1 Customer goals
+
+* Simple “tap-to-start” experience.
+* Clear options for **2×6** and **4×6**.
+* Easy photo selection from **8 captured shots**.
+* Printed photo includes **QR** to retrieve **digital image + recorded video**.
+* Fast printing + friendly completion screen.
+
+### 2.2 Staff goals
+
+* Configure timers, pricing, and hardware settings.
+* Track cash acceptor events and totals.
+* Reprint last job with preview.
+* Access robust logging for troubleshooting.
+* Add new frames by dropping files into folders.
+
+---
+
+## 3) Scope
+
+### In scope
+
+* Kiosk UI flow (customer + staff).
+* Frame scanning from folders (categories + templates).
+* Cash payment via **serial bill acceptor**.
+* Card payment: **placeholder architecture** (implementation TBD).
+* Canon camera integration via **Canon SDK/API**.
+* Continuous video recording during session capture.
+* Composite image generation + QR overlay.
+* Print pipeline to **DNP RX1HS**.
+* Upload/hosting pipeline for image/video + QR destination (implementation details may vary, but interfaces must exist).
+* Logging + audit trail.
+
+### Out of scope (for v0.1)
+
+* Online admin portal.
+* Multi-language support (can be added later).
+* Complex frame slot geometry per-frame (slots are fixed per template type).
+
+---
+
+## 4) Definitions
+
+* **Session:** One customer run from “Tap to Start” until returning Home.
+* **Template type:** Determines slot count & placement (fixed layouts).
+* **Frame:** Transparent overlay PNG placed above composed photos.
+* **Slots:** Rectangles where chosen photos appear within a template.
+* **Even quantity rule:** Prints must be purchased in **2, 4, 6, 8…**
+
+---
+
+## 5) Hardware & Integrations
+
+### Required
+
+* **Camera:** Canon (via Canon SDK/API)
+* **Printer:** DNP RX1HS
+* **Cash acceptor:** Serial bill acceptor (events: inserted/accepted/rejected/jammed)
+
+### Optional / future
+
+* **Card payment** device/API (unknown; must be swappable)
+* **Network upload** target (local server, NAS, cloud bucket, etc.)
+
+---
+
+## 6) User Experience: State Machine (Primary Flow)
+
+**HOME → SIZE → QUANTITY → (LAYOUT if 4×6) → CATEGORY → FRAME → PAYMENT → CAPTURE → REVIEW/SELECT → FINALIZE → PRINTING → THANK YOU → HOME**
+
+At any point:
+
+* Inactivity timer triggers **Auto-return to HOME** (unless payment already confirmed; see §12).
+* Critical errors show a friendly “Call Staff” screen + log event.
+
+---
+
+## 7) Customer Screens (Screen-by-Screen Requirements)
+
+### 7.1 Home / Attract
+
+**UI**
+
+* Fullscreen background (theme asset)
+* Large “Tap to Start” button
+* Optional idle slideshow/video
+
+**Logic**
+
+* Touch/click starts a new session.
+* Inactivity: remains in attract mode.
+
+---
+
+### 7.2 Size Selection
+
+Buttons:
+
+* **2×6**
+* **4×6**
+
+Rules:
+
+* Must store selection in session.
+* Back button returns to Home.
+
+---
+
+### 7.3 Quantity Selection (Even Only)
+
+UI:
+
+* Quantity stepper or button set: **2 / 4 / 6 / 8** (configurable max)
+* Live price display
+
+Rules:
+
+* Only even numbers allowed (hard validation).
+* Pricing depends on size (+ style if 4×6; see §8).
+
+---
+
+### 7.4 4×6 Layout Selection (Only if size = 4×6)
+
+Options:
+
+* **Style A:** 2 images (2 slots)
+* **Style B:** 4 images (4 slots)
+* **Style C:** 6 images (6 slots)
+
+Rules:
+
+* Store selected style in session.
+* Next goes to Category/Frame flow.
+
+---
+
+### 7.5 Frame Category Selection
+
+UI:
+
+* Category tiles (from folders)
+  Examples: “Kawaii Alley”, “K-Pop”, “Cute”, “Seasonal”, etc.
+
+Rules:
+
+* Categories are discovered automatically from folder structure (see §10).
+* Selecting category opens frame grid.
+
+---
+
+### 7.6 Frame Selection
+
+UI:
+
+* Grid of frames (thumbnails)
+* Preview panel showing frame overlay on template base
+* Confirm button
+
+Rules:
+
+* Frames are loaded from disk; new frames appear automatically.
+* Frame selection determines:
+
+  * overlay image (PNG)
+  * template type (implied by directory)
+* Confirm → Payment screen
+
+---
+
+### 7.7 Payment
+
+UI:
+
+* Payment method options:
+
+  * **Cash**
+  * **Card** (disabled or “Coming soon” unless enabled in config)
+* Price summary (size, style, quantity)
+* “Cancel” (before payment confirmation only)
+
+Rules:
+
+* Cash: accumulate accepted value until total >= price.
+* Must log bill acceptor events (insert/reject/jam/accepted).
+* On success: mark session as **Paid** and proceed to Capture.
+* After Paid: disallow returning to earlier screens (unless staff override).
+
+---
+
+### 7.8 Capture (8 shots)
+
+UI:
+
+* Live view area (if available)
+* Countdown timer
+* Shot progress indicator (e.g., 1/8 … 8/8)
+
+Rules:
+
+* Capture exactly **8 still photos** each session.
+* Timing (configurable in staff menu):
+
+  * pre-countdown length
+  * interval between shots
+* **Video recording**:
+
+  * starts at beginning of capture
+  * ends after last shot (or after review starts; configurable)
+* Must handle camera disconnect:
+
+  * show “Call Staff”
+  * log error
+  * do not proceed
+
+---
+
+### 7.9 Review & Select Photos
+
+Layout:
+
+* **Right side:** 8 thumbnails (captured)
+* **Left side:** frame preview with slot positions
+
+Interaction rules:
+
+* Customer taps thumbnails to fill slots:
+
+  * Selected thumbnail becomes **faded** and shows **slot number** (1..N)
+  * Preview updates immediately with the chosen photo inserted into slot
+* Customer can:
+
+  * tap a selected thumbnail again to unselect it (clears that slot)
+  * fill until required slot count met:
+
+    * 2×6 requires **4**
+    * 4×6 requires **2 / 4 / 6** depending on style
+* Next button enabled only when all required slots are filled.
+* Optional “Change Frame” button (configurable)
+
+  * If enabled: returns to frame selection but keeps photos.
+
+---
+
+### 7.10 Finalize
+
+Actions:
+
+* Create final composite image:
+
+  * place selected photos into template slots
+  * apply frame overlay PNG
+  * render print-ready at correct resolution
+* Generate QR code (top-right placement; see §9)
+
+  * QR links to a landing page containing:
+
+    * digital image download
+    * video download/playback
+    * optional review link
+* Save outputs to session folder and enqueue print.
+
+---
+
+### 7.11 Printing + Thank You
+
+UI:
+
+* “Printing…” status
+* Show QR for review link (optional)
+* Thank-you message
+
+Rules:
+
+* Print in background queue; UI must not freeze.
+* On print success/failure:
+
+  * log result
+  * if failure: show “Call Staff” + allow staff to reprint.
+
+Auto-return:
+
+* After completion delay (configurable), return to Home.
+
+---
+
+## 8) Pricing Rules
+
+### Base requirement
+
+* Quantity must be **even** for both 2×6 and 4×6.
+* Pricing is configured in staff menu and persisted to config.
+
+### Recommended pricing model
+
+* Price per “pair” (2 prints) for each product:
+
+  * 2×6 (4-slot template)
+  * 4×6 Style A (2-slot)
+  * 4×6 Style B (4-slot)
+  * 4×6 Style C (6-slot)
+
+Example:
+
+* totalPrice = pairs * pricePerPair
+* where pairs = quantity / 2
+
+---
+
+## 9) Template Types & Slot Geometry
+
+Slots are **fixed per template type** (not per frame). Frames must match the template’s pixel dimensions.
+
+Template types:
+
+* `2x6_4slots`
+* `4x6_2slots`
+* `4x6_4slots`
+* `4x6_6slots`
+
+Each template defines:
+
+* Canvas size in pixels (print-ready)
+* Slot rectangles: `x, y, width, height`
+* QR placement rectangle (top-right) and size
+* Optional padding/bleed settings
+
+---
+
+## 10) Frame & Asset File System (Auto-discovery)
+
+### 10.1 Folder structure (required)
+
+```
+PhotoboothApp/
+  config/
+  themes/
+    default/
+      screens/
+      buttons/
+      backgrounds/
+      sounds/
+      strings.json
+      theme.json
+  frames/
+    2x6/
+      Kawaii Alley/
+        frame001.png
+        frame002.png
+      Cute/
+        frameA.png
+    4x6/
+      2slots/
+        Seasonal/
+          frame1.png
+      4slots/
+        K-Pop/
+          frame77.png
+      6slots/
+        Cute/
+          frame9.png
+  sessions/
+  prints/
+  videos/
+  logs/
+```
+
+### 10.2 Frame file rules
+
+* PNG with transparency
+* Must match the template type’s expected dimensions
+* File name becomes display name unless overridden via optional metadata
+
+### 10.3 Optional frame metadata (future-ready)
+
+If you want nicer names/thumbnails later:
+
+* `frame001.png`
+* `frame001.json` (title, tags, thumbnail override)
+
+---
+
+## 11) Staff Menu Specification
+
+### 11.1 Access (secret)
+
+Configurable method(s), e.g.:
+
+* Tap logo 7 times
+* Hold top-left corner 3 seconds
+* PIN entry
+
+### 11.2 Sections
+
+1. **Timers**
+
+   * Home idle loop timer
+   * Per-screen inactivity timeout
+   * Capture countdown time
+   * Time between shots
+   * Review screen timeout
+   * Thank-you duration
+
+2. **Pricing**
+
+   * Price per pair for each product type
+   * Max quantity allowed
+
+3. **Cash Acceptor**
+
+   * Serial port settings (COM, baud, protocol)
+   * Enable/disable
+   * Live event viewer
+   * Totals: daily/weekly/all-time
+   * Jam handling notes + “Mark resolved”
+
+4. **Printer (DNP RX1HS)**
+
+   * Printer status
+   * Test print
+   * Print queue viewer
+   * Reprint last (with preview)
+   * Reprint from history
+
+5. **Camera (Canon)**
+
+   * Connection test
+   * Live view test
+   * Capture test shot
+   * Video record test
+   * Storage path + free space display
+
+6. **Frames & Assets**
+
+   * Rescan frames
+   * Validate missing assets (show errors)
+   * Theme selector (if multiple themes)
+
+7. **Logs**
+
+   * View today’s log
+   * Export logs (USB folder picker)
+
+8. **Maintenance**
+
+   * Restart app
+   * Reboot/shutdown (optional)
+   * “Safe mode” toggle (load default theme)
+
+---
+
+## 12) Error Handling & Recovery Rules
+
+### 12.1 If payment is NOT complete
+
+* Customer may cancel and return Home at any time.
+
+### 12.2 If payment IS complete
+
+* Customer cannot back out to earlier steps.
+* If a critical error occurs (camera/printer/upload), show:
+
+  * “Please call staff”
+  * staff can:
+
+    * retry operation
+    * reprint later
+    * mark refunded (manual) for audit
+
+### 12.3 Watchdog behavior
+
+* If app crashes:
+
+  * auto-restart
+  * log crash event
+  * return to Home
+
+---
+
+## 13) Logging & Audit Trail (Required)
+
+### 13.1 Events to log
+
+* App lifecycle: start/stop/crash
+* Session: start/end, selections (size/style/frame/qty)
+* Cash acceptor: inserted/accepted/rejected/jammed + amounts
+* Payment: completed/failed/canceled
+* Capture: shot # timestamps, camera errors
+* Video: start/stop, output file, errors
+* Upload: success/failure, generated URL/token
+* Printing: queued/sent/success/failure
+* Staff actions: config changes + who/when (PIN identity if used)
+
+### 13.2 Log format
+
+* Human-readable daily log file (txt)
+* Structured JSON log (recommended) for analytics/troubleshooting
+
+---
+
+## 14) Data Model (Session Object)
+
+Minimum fields:
+
+* `sessionId`
+* `startTime`, `endTime`
+* `size` = `2x6 | 4x6`
+* `style` = `2slots | 4slots | 6slots | null`
+* `quantityEven`
+* `frameId` (path-based)
+* `priceTotal`
+* `paymentStatus` + details
+* `cashEvents[]`
+* `capturedPhotos[8]` (file paths)
+* `selectedMapping` (slot → photoIndex)
+* `finalImagePath`
+* `videoPath`
+* `qrUrl`
+* `printJobId` + status
+
+---
+
+## 15) Configuration Files (Recommended)
+
+### `config/app.json` (example)
+
+```json
+{
+  "kiosk": { "inactivitySeconds": 45, "lockAfterPayment": true },
+  "capture": { "shotCount": 8, "countdownSeconds": 3, "secondsBetweenShots": 4 },
+  "paths": { "frames": "./frames", "themes": "./themes/default", "sessions": "./sessions" },
+  "devices": {
+    "cashAcceptor": { "enabled": true, "comPort": "COM3", "baudRate": 9600 },
+    "printer": { "enabled": true },
+    "camera": { "enabled": true }
+  },
+  "upload": { "enabled": true, "baseUrl": "https://your-landing-page-host/..." }
+}
+```
+
+### `config/pricing.json` (example)
+
+```json
+{
+  "2x6_4slots": { "pricePerPair": 8.00 },
+  "4x6_2slots": { "pricePerPair": 8.00 },
+  "4x6_4slots": { "pricePerPair": 10.00 },
+  "4x6_6slots": { "pricePerPair": 12.00 },
+  "maxQuantity": 8
+}
+```
+
+### `config/templates.json` (example)
+
+```json
+{
+  "2x6_4slots": {
+    "canvas": { "width": 1200, "height": 3600 },
+    "slots": [
+      { "x": 80, "y": 200, "w": 1040, "h": 620 },
+      { "x": 80, "y": 880, "w": 1040, "h": 620 },
+      { "x": 80, "y": 1560, "w": 1040, "h": 620 },
+      { "x": 80, "y": 2240, "w": 1040, "h": 620 }
+    ],
+    "qr": { "x": 930, "y": 40, "w": 220, "h": 220 }
+  }
+}
+```
+
+(Real pixel sizes should match your printer/media pipeline; values above are placeholders.)
+
+---
+
+## 16) Architecture Requirements (Interfaces)
+
+To keep card payments and devices swappable, implement providers:
+
+* `ICameraProvider`
+
+  * `Connect()`, `StartLiveView()`, `CapturePhoto()`, `StartVideo()`, `StopVideo()`
+* `IPaymentProvider`
+
+  * `StartPayment(amount)`, `Cancel()`, events: `OnProgress`, `OnSuccess`, `OnFailure`
+* `IPrinterProvider`
+
+  * `Print(file, quantity)`, `GetStatus()`, events: `OnJobUpdate`
+* `IUploadProvider`
+
+  * `UploadImage()`, `UploadVideo()`, returns `qrUrl/token`
+
+---
+
+## 17) Acceptance Criteria (MVP “Done” Checklist)
+
+### Customer flow
+
+* [ ] Home → complete session → returns Home automatically
+* [ ] Even quantities enforced everywhere (UI + validation)
+* [ ] 2×6 produces final print using 4 selected images out of 8
+* [ ] 4×6 styles produce correct slot counts (2/4/6) from 8 captured
+* [ ] Frame folders auto-populate categories and frames without code changes
+
+### Hardware
+
+* [ ] Cash acceptor logs inserted/accepted/rejected/jam events
+* [ ] Payment gating works: capture only starts after payment success
+* [ ] Canon capture reliably produces 8 images
+* [ ] Video recorded during capture and tied to session
+* [ ] DNP print job submitted and tracked
+
+### Output
+
+* [ ] Final image includes QR top-right
+* [ ] QR resolves to page with image + video
+* [ ] Reprint last includes preview
+
+### Staff tools
+
+* [ ] Secret staff menu works
+* [ ] Timers + pricing editable and persisted
+* [ ] Logs exportable/viewable
+
+---
+
+## 18) Questions answers
+
+1. **Platform:** Windows kiosk? (recommended if using DNP + Canon SDK) # will be windows
+2. **Upload target:** local server vs cloud (affects QR landing page) # maybe will try to be on cloudflare
+3. **Card payment provider:** Square/Stripe terminal/Moneris/etc. (API constraints) # will try stripe
+4. **Exact print resolution/DPI & template pixel sizes** for each product # 1200 × 1800 for the full print. 2x6 will have to be duplicated side by side then sent to printer after with the option of cutting in half.
