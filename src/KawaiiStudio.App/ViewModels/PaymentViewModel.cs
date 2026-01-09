@@ -10,22 +10,33 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 {
     private readonly NavigationService _navigation;
     private readonly SessionService _session;
-    private readonly RelayCommand _markPaidCommand;
+    private readonly SettingsService _settings;
+    private readonly RelayCommand _addTokenCommand;
+    private readonly RelayCommand _backCommand;
     private string _summaryText = string.Empty;
+    private string _tokenStatusText = string.Empty;
+    private string _totalPriceText = string.Empty;
+    private int _tokensRequired;
 
-    public PaymentViewModel(NavigationService navigation, SessionService session, ThemeCatalogService themeCatalog)
+    public PaymentViewModel(
+        NavigationService navigation,
+        SessionService session,
+        ThemeCatalogService themeCatalog,
+        SettingsService settings)
         : base(themeCatalog, "payment")
     {
         _navigation = navigation;
         _session = session;
+        _settings = settings;
 
-        _markPaidCommand = new RelayCommand(MarkPaid, () => !_session.Current.IsPaid);
-        MarkPaidCommand = _markPaidCommand;
-        BackCommand = new RelayCommand(() => _navigation.Navigate("frame"));
+        _addTokenCommand = new RelayCommand(AddToken, CanAddToken);
+        AddTokenCommand = _addTokenCommand;
+        _backCommand = new RelayCommand(() => _navigation.Navigate("frame"), () => !_session.Current.IsPaid);
+        BackCommand = _backCommand;
         CancelCommand = new RelayCommand(Cancel, () => !_session.Current.IsPaid);
     }
 
-    public ICommand MarkPaidCommand { get; }
+    public ICommand AddTokenCommand { get; }
     public ICommand BackCommand { get; }
     public ICommand CancelCommand { get; }
 
@@ -40,6 +51,26 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     }
 
     public bool IsPaid => _session.Current.IsPaid;
+
+    public string TokenStatusText
+    {
+        get => _tokenStatusText;
+        private set
+        {
+            _tokenStatusText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string TotalPriceText
+    {
+        get => _totalPriceText;
+        private set
+        {
+            _totalPriceText = value;
+            OnPropertyChanged();
+        }
+    }
 
     public override void OnNavigatedTo()
     {
@@ -58,17 +89,71 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         builder.AppendLine($"Template: {FormatValue(session.TemplateType)}");
         builder.AppendLine($"Category: {FormatValue(session.Category?.Name)}");
         builder.AppendLine($"Frame: {FormatValue(session.Frame?.Name)}");
+        builder.AppendLine($"Total: {FormatCurrency(CalculateTotalPrice())}");
 
         SummaryText = builder.ToString().TrimEnd();
+        UpdateTokenStatus();
         OnPropertyChanged(nameof(IsPaid));
-        _markPaidCommand.RaiseCanExecuteChanged();
+        _addTokenCommand.RaiseCanExecuteChanged();
+        _backCommand.RaiseCanExecuteChanged();
+    }
+
+    private void UpdateTokenStatus()
+    {
+        var total = CalculateTotalPrice();
+        var tokensInserted = _session.Current.TokensInserted;
+        TokenStatusText = _tokensRequired <= 0
+            ? "Tokens: pricing not set"
+            : $"Tokens: {tokensInserted} / {_tokensRequired}";
+
+        TotalPriceText = $"Total due: {FormatCurrency(total)}";
+    }
+
+    private decimal CalculateTotalPrice()
+    {
+        var session = _session.Current;
+        var total = _settings.GetPrice(session.Size, session.Quantity);
+        _tokensRequired = CalculateTokensRequired(total, _settings.TokenValue);
+        return total;
+    }
+
+    private static int CalculateTokensRequired(decimal totalPrice, decimal valuePerToken)
+    {
+        if (totalPrice <= 0m || valuePerToken <= 0m)
+        {
+            return 0;
+        }
+
+        return (int)Math.Ceiling(totalPrice / valuePerToken);
+    }
+
+    private bool CanAddToken()
+    {
+        return !_session.Current.IsPaid && _tokensRequired > 0;
+    }
+
+    private void AddToken()
+    {
+        if (_session.Current.IsPaid)
+        {
+            return;
+        }
+
+        _session.Current.AddTokens(1);
+        UpdateTokenStatus();
+
+        if (_tokensRequired > 0 && _session.Current.TokensInserted >= _tokensRequired)
+        {
+            MarkPaid();
+        }
     }
 
     private void MarkPaid()
     {
         _session.Current.MarkPaid();
         OnPropertyChanged(nameof(IsPaid));
-        _markPaidCommand.RaiseCanExecuteChanged();
+        _addTokenCommand.RaiseCanExecuteChanged();
+        _backCommand.RaiseCanExecuteChanged();
         _navigation.Navigate("capture");
     }
 
@@ -106,5 +191,10 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private static string FormatValue(object? value)
     {
         return value is null ? "Not set" : value.ToString() ?? "Not set";
+    }
+
+    private static string FormatCurrency(decimal amount)
+    {
+        return $"${amount:0.00}";
     }
 }

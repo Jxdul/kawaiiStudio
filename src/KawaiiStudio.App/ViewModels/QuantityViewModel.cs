@@ -9,14 +9,20 @@ public sealed class QuantityViewModel : ScreenViewModelBase
 {
     private readonly NavigationService _navigation;
     private readonly SessionService _session;
+    private readonly SettingsService _settings;
 
-    public QuantityViewModel(NavigationService navigation, SessionService session, ThemeCatalogService themeCatalog)
+    public QuantityViewModel(
+        NavigationService navigation,
+        SessionService session,
+        ThemeCatalogService themeCatalog,
+        SettingsService settings)
         : base(themeCatalog, "quantity")
     {
         _navigation = navigation;
         _session = session;
+        _settings = settings;
 
-        AvailableQuantities = new[] { 2, 4, 6, 8 };
+        AvailableQuantities = BuildQuantities();
         SelectQuantityCommand = new RelayCommand<int>(SelectQuantity);
         BackCommand = new RelayCommand(() => _navigation.Navigate("size"));
     }
@@ -25,6 +31,23 @@ public sealed class QuantityViewModel : ScreenViewModelBase
 
     public ICommand SelectQuantityCommand { get; }
     public ICommand BackCommand { get; }
+
+    private IReadOnlyList<int> BuildQuantities()
+    {
+        var maxQuantity = _settings.MaxQuantity;
+        if (maxQuantity <= 0)
+        {
+            maxQuantity = 8;
+        }
+
+        var quantities = new List<int>();
+        for (var value = 2; value <= maxQuantity; value += 2)
+        {
+            quantities.Add(value);
+        }
+
+        return quantities;
+    }
 
     private void SelectQuantity(int quantity)
     {

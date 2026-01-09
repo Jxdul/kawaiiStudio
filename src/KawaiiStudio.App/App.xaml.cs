@@ -14,15 +14,16 @@ public partial class App : Application
         var frameCatalog = new FrameCatalogService(appPaths.FramesRoot);
         var themeCatalog = new ThemeCatalogService(appPaths.ThemeRoot);
         var session = new SessionService();
+        var settings = new SettingsService(appPaths);
 
         var navigation = new NavigationService();
         var homeViewModel = new HomeViewModel(navigation, session, themeCatalog);
         var sizeViewModel = new SizeViewModel(navigation, session, themeCatalog);
-        var quantityViewModel = new QuantityViewModel(navigation, session, themeCatalog);
+        var quantityViewModel = new QuantityViewModel(navigation, session, themeCatalog, settings);
         var layoutViewModel = new LayoutViewModel(navigation, session, themeCatalog);
         var categoryViewModel = new CategoryViewModel(navigation, session, frameCatalog, themeCatalog);
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
-        var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog);
+        var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings);
         var captureViewModel = new CaptureViewModel(navigation, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, themeCatalog);
         var finalizeViewModel = new FinalizeViewModel(navigation, themeCatalog);

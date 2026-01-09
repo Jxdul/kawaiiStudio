@@ -3,10 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="#0B0B0B">
   <Grid>
-    <Image Source="{Binding BackgroundPath, Converter={StaticResource FilePathToImage}}"
-           Stretch="UniformToFill"
-           Opacity="0.9" />
-    <Rectangle Fill="#66000000" />
     <Grid>
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
         <TextBlock Text="Kawaii Studio" FontSize="48" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,16" />

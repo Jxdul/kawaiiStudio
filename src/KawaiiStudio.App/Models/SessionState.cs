@@ -10,6 +10,7 @@ public sealed class SessionState
     public FrameCategory? Category { get; private set; }
     public FrameItem? Frame { get; private set; }
     public bool IsPaid { get; private set; }
+    public int TokensInserted { get; private set; }
 
     public string? TemplateType
     {
@@ -57,6 +58,7 @@ public sealed class SessionState
         Category = null;
         Frame = null;
         IsPaid = false;
+        TokensInserted = 0;
     }
 
     public void SetSize(PrintSize size)
@@ -102,5 +104,15 @@ public sealed class SessionState
     public void MarkPaid()
     {
         IsPaid = true;
+    }
+
+    public void AddTokens(int tokens)
+    {
+        if (tokens <= 0)
+        {
+            return;
+        }
+
+        TokensInserted += tokens;
     }
 }

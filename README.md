@@ -75,3 +75,16 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 
 - The current screens are placeholders for device integrations (camera, printer, payment).
 - See `specifications.txt` for the full functional spec and acceptance criteria.
+
+## Remaining Work (from `specifications.txt`)
+
+- Payment logic is placeholder; needs pricing calculation and cash/card flows.
+- Capture screen needs countdown, live view, 8-shot capture, and video recording.
+- Review/select needs thumbnail grid, slot assignment, and continue gating by filled slots.
+- Finalize/printing need composite render, QR generation, upload hooks, and print queue.
+- Auto-return timing and post-payment lockout rules are not enforced globally.
+- Config parsing for `config/app.json` and `config/pricing.json` is not implemented.
+- Session model lacks required fields (sessionId, timestamps, photos, mapping, outputs).
+- Provider interfaces for camera/payment/printer/upload are not defined yet.
+- Inactivity timers, error handling, and "Call Staff" flow are missing.
+- Staff menu (secret access, timers/pricing/devices/logs) is not implemented.
