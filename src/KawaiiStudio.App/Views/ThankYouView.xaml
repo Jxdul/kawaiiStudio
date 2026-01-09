@@ -1,0 +1,18 @@
+<UserControl x:Class="KawaiiStudio.App.Views.ThankYouView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#0B0B0B">
+  <Grid>
+    <Image Source="{Binding BackgroundPath, Converter={StaticResource FilePathToImage}}"
+           Stretch="UniformToFill"
+           Opacity="0.9" />
+    <Rectangle Fill="#66000000" />
+    <Grid Margin="24">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="Thank You" FontSize="40" FontWeight="SemiBold" Margin="0,0,0,12" />
+        <TextBlock Text="Grab your prints and scan the QR" FontSize="16" Foreground="#B8B8B8" Margin="0,0,0,16" />
+        <Button Content="Done" Command="{Binding DoneCommand}" FontSize="18" Padding="18,10" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>

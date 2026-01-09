@@ -1,0 +1,22 @@
+<UserControl x:Class="KawaiiStudio.App.Views.SizeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:KawaiiStudio.App.Models"
+             Background="#0B0B0B">
+  <Grid>
+    <Image Source="{Binding BackgroundPath, Converter={StaticResource FilePathToImage}}"
+           Stretch="UniformToFill"
+           Opacity="0.9" />
+    <Rectangle Fill="#66000000" />
+    <Grid Margin="24">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="Choose Print Size" FontSize="32" FontWeight="SemiBold" Margin="0,0,0,16" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+          <Button Content="2x6" Command="{Binding SelectSizeCommand}" CommandParameter="{x:Static models:PrintSize.TwoBySix}" FontSize="20" Padding="24,10" />
+          <Button Content="4x6" Command="{Binding SelectSizeCommand}" CommandParameter="{x:Static models:PrintSize.FourBySix}" FontSize="20" Padding="24,10" />
+        </StackPanel>
+        <Button Content="Back" Command="{Binding BackCommand}" Margin="0,16,0,0" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>
