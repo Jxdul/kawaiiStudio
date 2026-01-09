@@ -17,6 +17,15 @@ ehthumbs.db
 *.sln.docstates
 *.rsuser
 
+# VS Code
+.vscode/
+
+# JetBrains / Rider
+.idea/
+*.sln.iml
+*.DotSettings.user
+_ReSharper*/
+
 # Runtime outputs
 /sessions/
 /prints/
@@ -62,11 +71,13 @@ ScaffoldingReadMe.txt
 
 # dotenv environment variables file
 .env
+.env.*
 
 # Others
 ~$*
 *~
 CodeCoverage/
+*.log
 
 # MSBuild Binary and Structured Log
 *.binlog

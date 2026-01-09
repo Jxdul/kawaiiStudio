@@ -51,7 +51,7 @@ namespace KawaiiStudio.App.Views {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/KawaiiStudio.App;component/views/libraryview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/KawaiiStudio.App;V1.0.0.0;component/views/libraryview.xaml", System.UriKind.Relative);
             
             #line 1 "../../../../Views/LibraryView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
