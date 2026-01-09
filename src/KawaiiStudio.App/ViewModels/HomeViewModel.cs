@@ -3,15 +3,27 @@ using KawaiiStudio.App.Services;
 
 namespace KawaiiStudio.App.ViewModels;
 
-public sealed class HomeViewModel : ViewModelBase
+public sealed class HomeViewModel : ScreenViewModelBase
 {
     private readonly NavigationService _navigation;
+    private readonly SessionService _session;
 
-    public HomeViewModel(NavigationService navigation)
+    public HomeViewModel(NavigationService navigation, SessionService session, ThemeCatalogService themeCatalog)
+        : base(themeCatalog, "home")
     {
         _navigation = navigation;
-        StartCommand = new RelayCommand(() => _navigation.Navigate("library"));
+        _session = session;
+
+        StartCommand = new RelayCommand(StartSession);
+        AssetsCommand = new RelayCommand(() => _navigation.Navigate("library"));
     }
 
     public ICommand StartCommand { get; }
+    public ICommand AssetsCommand { get; }
+
+    private void StartSession()
+    {
+        _session.StartNewSession();
+        _navigation.Navigate("size");
+    }
 }

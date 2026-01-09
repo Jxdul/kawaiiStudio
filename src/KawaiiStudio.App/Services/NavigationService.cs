@@ -19,6 +19,11 @@ public sealed class NavigationService
     {
         if (_viewModels.TryGetValue(key, out var viewModel))
         {
+            if (viewModel is INavigationAware navigationAware)
+            {
+                navigationAware.OnNavigatedTo();
+            }
+
             Navigated?.Invoke(viewModel);
         }
     }

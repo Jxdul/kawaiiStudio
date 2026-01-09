@@ -3,10 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="#0B0B0B">
   <Grid>
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-      <TextBlock Text="Kawaii Studio" FontSize="48" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,16" />
-      <Button Content="Tap to Start" Command="{Binding StartCommand}" FontSize="24" Padding="28,12" Margin="0,0,0,8" />
-      <TextBlock Text="View available frames and backgrounds" FontSize="14" Foreground="#B8B8B8" HorizontalAlignment="Center" />
-    </StackPanel>
+    <Image Source="{Binding BackgroundPath, Converter={StaticResource FilePathToImage}}"
+           Stretch="UniformToFill"
+           Opacity="0.9" />
+    <Rectangle Fill="#66000000" />
+    <Grid>
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="Kawaii Studio" FontSize="48" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,16" />
+        <Button Content="Tap to Start" Command="{Binding StartCommand}" FontSize="24" Padding="28,12" Margin="0,0,0,12" />
+        <Button Content="Assets Library" Command="{Binding AssetsCommand}" FontSize="14" Padding="18,6" />
+        <TextBlock Text="Load frames and backgrounds from Config folders" FontSize="12" Foreground="#B8B8B8" HorizontalAlignment="Center" Margin="0,12,0,0" />
+      </StackPanel>
+    </Grid>
   </Grid>
 </UserControl>

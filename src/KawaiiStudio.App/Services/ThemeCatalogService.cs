@@ -47,6 +47,27 @@ public sealed class ThemeCatalogService
         return results;
     }
 
+    public string? GetBackgroundPath(string screenKey)
+    {
+        if (string.IsNullOrWhiteSpace(screenKey))
+        {
+            return null;
+        }
+
+        var backgroundsRoot = Path.Combine(_themeRoot, "backgrounds");
+        var sanitized = screenKey.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+        var folderPath = Path.Combine(backgroundsRoot, sanitized);
+        if (!Directory.Exists(folderPath))
+        {
+            return null;
+        }
+
+        return Directory.EnumerateFiles(folderPath)
+            .Where(IsImageFile)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+    }
+
     private static bool IsImageFile(string path)
     {
         var extension = Path.GetExtension(path);

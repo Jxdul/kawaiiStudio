@@ -20,6 +20,39 @@
     <DataTemplate DataType="{x:Type vm:HomeViewModel}">
       <views:HomeView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:SizeViewModel}">
+      <views:SizeView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:QuantityViewModel}">
+      <views:QuantityView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:LayoutViewModel}">
+      <views:LayoutView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:CategoryViewModel}">
+      <views:CategoryView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:FrameViewModel}">
+      <views:FrameView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:PaymentViewModel}">
+      <views:PaymentView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:CaptureViewModel}">
+      <views:CaptureView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ReviewViewModel}">
+      <views:ReviewView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:FinalizeViewModel}">
+      <views:FinalizeView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:PrintingViewModel}">
+      <views:PrintingView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ThankYouViewModel}">
+      <views:ThankYouView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:LibraryViewModel}">
       <views:LibraryView />
     </DataTemplate>
