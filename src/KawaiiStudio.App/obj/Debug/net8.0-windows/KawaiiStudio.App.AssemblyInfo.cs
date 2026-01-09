@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KawaiiStudio.App")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0c9b90c7e17b10433fc7f4fdb57246d2ab83131d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+26c42386193b009d116405116b26ad0825ab167c")]
 [assembly: System.Reflection.AssemblyProductAttribute("KawaiiStudio.App")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KawaiiStudio.App")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
