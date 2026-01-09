@@ -22,14 +22,9 @@ public sealed class SizeViewModel : ScreenViewModelBase
     public ICommand SelectSizeCommand { get; }
     public ICommand BackCommand { get; }
 
-    private void SelectSize(PrintSize? size)
+    private void SelectSize(PrintSize size)
     {
-        if (size is null)
-        {
-            return;
-        }
-
-        _session.Current.SetSize(size.Value);
+        _session.Current.SetSize(size);
         _navigation.Navigate("quantity");
     }
 }

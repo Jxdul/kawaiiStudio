@@ -32,13 +32,8 @@ public sealed class LayoutViewModel : ScreenViewModelBase
     public ICommand SelectLayoutCommand { get; }
     public ICommand BackCommand { get; }
 
-    private void SelectLayout(LayoutOption? option)
+    private void SelectLayout(LayoutOption option)
     {
-        if (option is null)
-        {
-            return;
-        }
-
         _session.Current.SetLayout(option.Style);
         _navigation.Navigate("category");
     }

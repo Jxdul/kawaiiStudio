@@ -64,13 +64,8 @@ public sealed class FrameViewModel : ScreenViewModelBase
         OnPropertyChanged(nameof(HasFrames));
     }
 
-    private void SelectFrame(FrameItem? frame)
+    private void SelectFrame(FrameItem frame)
     {
-        if (frame is null)
-        {
-            return;
-        }
-
         _session.Current.SetFrame(frame);
         _navigation.Navigate("payment");
     }

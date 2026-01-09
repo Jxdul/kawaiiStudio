@@ -26,14 +26,9 @@ public sealed class QuantityViewModel : ScreenViewModelBase
     public ICommand SelectQuantityCommand { get; }
     public ICommand BackCommand { get; }
 
-    private void SelectQuantity(int? quantity)
+    private void SelectQuantity(int quantity)
     {
-        if (quantity is null)
-        {
-            return;
-        }
-
-        _session.Current.SetQuantity(quantity.Value);
+        _session.Current.SetQuantity(quantity);
 
         if (_session.Current.Size == PrintSize.FourBySix)
         {

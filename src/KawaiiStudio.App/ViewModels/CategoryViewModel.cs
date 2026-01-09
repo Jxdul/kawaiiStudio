@@ -54,13 +54,8 @@ public sealed class CategoryViewModel : ScreenViewModelBase
         OnPropertyChanged(nameof(HasCategories));
     }
 
-    private void SelectCategory(FrameCategory? category)
+    private void SelectCategory(FrameCategory category)
     {
-        if (category is null)
-        {
-            return;
-        }
-
         _session.Current.SetCategory(category);
         _navigation.Navigate("frame");
     }
