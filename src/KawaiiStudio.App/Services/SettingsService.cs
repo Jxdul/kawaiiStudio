@@ -23,6 +23,11 @@ public sealed class SettingsService
     public string PrintName => GetString("PrintName", "DS-RX1");
     public string CashCom => GetString("cash_COM", "COM4");
 
+    public string GetValue(string key, string fallback = "")
+    {
+        return GetString(key, fallback);
+    }
+
     public void SetValue(string key, string value)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -38,6 +43,13 @@ public sealed class SettingsService
         Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath) ?? ".");
         var lines = BuildOutputLines();
         File.WriteAllLines(_settingsPath, lines);
+    }
+
+    public void Reload()
+    {
+        LoadFromFile();
+        EnsureDefaults();
+        Save();
     }
 
     public decimal GetPrice(PrintSize? size, int? quantity)

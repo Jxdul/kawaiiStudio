@@ -139,7 +139,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             return;
         }
 
-        _session.Current.AddTokens(1);
+        _session.Current.AddTokens(5);
         UpdateTokenStatus();
 
         if (_tokensRequired > 0 && _session.Current.TokensInserted >= _tokensRequired)

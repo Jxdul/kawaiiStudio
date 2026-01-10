@@ -11,5 +11,6 @@
         <TextBlock Text="Load frames and backgrounds from Config folders" FontSize="12" Foreground="#B8B8B8" HorizontalAlignment="Center" Margin="0,12,0,0" />
       </StackPanel>
     </Grid>
+    <Button Content="Staff" Command="{Binding StaffCommand}" FontSize="12" Padding="10,4" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Opacity="0.7" />
   </Grid>
 </UserControl>

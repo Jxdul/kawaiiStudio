@@ -16,10 +16,12 @@ public sealed class HomeViewModel : ScreenViewModelBase
 
         StartCommand = new RelayCommand(StartSession);
         AssetsCommand = new RelayCommand(() => _navigation.Navigate("library"));
+        StaffCommand = new RelayCommand(() => _navigation.Navigate("staff"));
     }
 
     public ICommand StartCommand { get; }
     public ICommand AssetsCommand { get; }
+    public ICommand StaffCommand { get; }
 
     private void StartSession()
     {

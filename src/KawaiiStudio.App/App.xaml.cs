@@ -30,6 +30,7 @@ public partial class App : Application
         var printingViewModel = new PrintingViewModel(navigation, themeCatalog);
         var thankYouViewModel = new ThankYouViewModel(navigation, session, themeCatalog);
         var libraryViewModel = new LibraryViewModel(navigation, frameCatalog, themeCatalog, appPaths);
+        var staffViewModel = new StaffViewModel(navigation, themeCatalog, settings);
 
         navigation.Register("home", homeViewModel);
         navigation.Register("size", sizeViewModel);
@@ -44,6 +45,7 @@ public partial class App : Application
         navigation.Register("printing", printingViewModel);
         navigation.Register("thank_you", thankYouViewModel);
         navigation.Register("library", libraryViewModel);
+        navigation.Register("staff", staffViewModel);
 
         var mainViewModel = new MainViewModel(navigation);
         var window = new MainWindow { DataContext = mainViewModel };
