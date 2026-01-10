@@ -20,6 +20,8 @@ public partial class App : Application
         var settings = new SettingsService(appPaths);
         Session = session;
 
+        EventManager.RegisterClassHandler(typeof(Button), Button.ClickEvent, new RoutedEventHandler(OnAnyButtonClicked));
+
         var navigation = new NavigationService();
         var homeViewModel = new HomeViewModel(navigation, session, themeCatalog);
         var sizeViewModel = new SizeViewModel(navigation, session, themeCatalog);
