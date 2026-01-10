@@ -52,6 +52,7 @@ public sealed class QuantityViewModel : ScreenViewModelBase
     private void SelectQuantity(int quantity)
     {
         _session.Current.SetQuantity(quantity);
+        KawaiiStudio.App.App.Log($"QUANTITY_SELECTED value={quantity}");
 
         if (_session.Current.Size == PrintSize.FourBySix)
         {

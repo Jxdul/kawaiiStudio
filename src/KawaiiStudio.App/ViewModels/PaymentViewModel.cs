@@ -113,6 +113,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     {
         var session = _session.Current;
         var total = _settings.GetPrice(session.Size, session.Quantity);
+        session.SetPriceTotal(total);
         _tokensRequired = CalculateTokensRequired(total, _settings.TokenValue);
         return total;
     }
@@ -141,6 +142,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
         _session.Current.AddTokens(5);
         UpdateTokenStatus();
+        KawaiiStudio.App.App.Log($"PAYMENT_TOKEN_ADDED tokens={_session.Current.TokensInserted} required={_tokensRequired}");
 
         if (_tokensRequired > 0 && _session.Current.TokensInserted >= _tokensRequired)
         {
@@ -154,6 +156,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         OnPropertyChanged(nameof(IsPaid));
         _addTokenCommand.RaiseCanExecuteChanged();
         _backCommand.RaiseCanExecuteChanged();
+        KawaiiStudio.App.App.Log($"PAYMENT_COMPLETED total={_session.Current.PriceTotal:0.00}");
         _navigation.Navigate("capture");
     }
 
@@ -164,6 +167,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             return;
         }
 
+        KawaiiStudio.App.App.Log("PAYMENT_CANCELED");
         _navigation.Navigate("home");
     }
 

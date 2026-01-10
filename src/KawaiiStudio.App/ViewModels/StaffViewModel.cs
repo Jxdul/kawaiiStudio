@@ -100,6 +100,7 @@ public sealed class StaffViewModel : ScreenViewModelBase
     {
         base.OnNavigatedTo();
         LoadFromSettings();
+        KawaiiStudio.App.App.Log("STAFF_ACCESS");
     }
 
     private void LoadFromSettings()

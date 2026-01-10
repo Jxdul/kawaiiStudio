@@ -15,4 +15,10 @@ public sealed class PrintingViewModel : ScreenViewModelBase
     }
 
     public ICommand ContinueCommand { get; }
+
+    public override void OnNavigatedTo()
+    {
+        base.OnNavigatedTo();
+        KawaiiStudio.App.App.Log("PRINTING_START");
+    }
 }

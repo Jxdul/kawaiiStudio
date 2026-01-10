@@ -17,4 +17,10 @@ public sealed class CaptureViewModel : ScreenViewModelBase
 
     public ICommand ContinueCommand { get; }
     public ICommand BackCommand { get; }
+
+    public override void OnNavigatedTo()
+    {
+        base.OnNavigatedTo();
+        KawaiiStudio.App.App.Log("CAPTURE_START");
+    }
 }

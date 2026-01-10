@@ -25,6 +25,12 @@ public sealed class SizeViewModel : ScreenViewModelBase
     private void SelectSize(PrintSize size)
     {
         _session.Current.SetSize(size);
+        KawaiiStudio.App.App.Log($"SIZE_SELECTED value={FormatSize(size)}");
         _navigation.Navigate("quantity");
+    }
+
+    private static string FormatSize(PrintSize size)
+    {
+        return size == PrintSize.TwoBySix ? "2x6" : "4x6";
     }
 }

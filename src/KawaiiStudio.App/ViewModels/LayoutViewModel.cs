@@ -35,6 +35,7 @@ public sealed class LayoutViewModel : ScreenViewModelBase
     private void SelectLayout(LayoutOption option)
     {
         _session.Current.SetLayout(option.Style);
+        KawaiiStudio.App.App.Log($"LAYOUT_SELECTED value={option.TemplateType}");
         _navigation.Navigate("category");
     }
 }

@@ -20,7 +20,7 @@ public sealed class ThankYouViewModel : ScreenViewModelBase
 
     private void CompleteSession()
     {
-        _session.StartNewSession();
+        _session.EndSession();
         _navigation.Navigate("home");
     }
 }

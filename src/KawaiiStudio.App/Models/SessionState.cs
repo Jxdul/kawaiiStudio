@@ -1,9 +1,18 @@
 using System;
+using System.Collections.Generic;
 
 namespace KawaiiStudio.App.Models;
 
 public sealed class SessionState
 {
+    private readonly List<string> _capturedPhotos = new();
+    private readonly Dictionary<int, int> _selectedMapping = new();
+
+    public string SessionId { get; private set; } = string.Empty;
+    public DateTime StartTime { get; private set; }
+    public DateTime? EndTime { get; private set; }
+    public string? SessionFolder { get; private set; }
+
     public PrintSize? Size { get; private set; }
     public int? Quantity { get; private set; }
     public LayoutStyle? Layout { get; private set; }
@@ -11,6 +20,18 @@ public sealed class SessionState
     public FrameItem? Frame { get; private set; }
     public bool IsPaid { get; private set; }
     public int TokensInserted { get; private set; }
+    public decimal PriceTotal { get; private set; }
+    public string PaymentStatus { get; private set; } = "Pending";
+    public string? PaymentDetail { get; private set; }
+
+    public IReadOnlyList<string> CapturedPhotos => _capturedPhotos;
+    public IReadOnlyDictionary<int, int> SelectedMapping => _selectedMapping;
+
+    public string? FinalImagePath { get; private set; }
+    public string? VideoPath { get; private set; }
+    public string? QrUrl { get; private set; }
+    public string? PrintJobId { get; private set; }
+    public string? PrintStatus { get; private set; }
 
     public string? TemplateType
     {
@@ -50,15 +71,25 @@ public sealed class SessionState
         }
     }
 
-    public void Reset()
+    public void Reset(string sessionId, DateTime startTime, string sessionFolder)
     {
+        SessionId = sessionId;
+        StartTime = startTime;
+        EndTime = null;
+        SessionFolder = sessionFolder;
         Size = null;
         Quantity = null;
         Layout = null;
         Category = null;
         Frame = null;
-        IsPaid = false;
-        TokensInserted = 0;
+        ResetPayment();
+        _capturedPhotos.Clear();
+        _selectedMapping.Clear();
+        FinalImagePath = null;
+        VideoPath = null;
+        QrUrl = null;
+        PrintJobId = null;
+        PrintStatus = null;
     }
 
     public void SetSize(PrintSize size)
@@ -67,7 +98,7 @@ public sealed class SessionState
         Layout = null;
         Category = null;
         Frame = null;
-        IsPaid = false;
+        ResetPayment();
     }
 
     public void SetQuantity(int quantity)
@@ -85,25 +116,27 @@ public sealed class SessionState
         Layout = layout;
         Category = null;
         Frame = null;
-        IsPaid = false;
+        ResetPayment();
     }
 
     public void SetCategory(FrameCategory category)
     {
         Category = category;
         Frame = null;
-        IsPaid = false;
+        ResetPayment();
     }
 
     public void SetFrame(FrameItem frame)
     {
         Frame = frame;
-        IsPaid = false;
+        ResetPayment();
     }
 
     public void MarkPaid()
     {
         IsPaid = true;
+        PaymentStatus = "Paid";
+        PaymentDetail = null;
     }
 
     public void AddTokens(int tokens)
@@ -114,5 +147,97 @@ public sealed class SessionState
         }
 
         TokensInserted += tokens;
+    }
+
+    public void SetPriceTotal(decimal total)
+    {
+        PriceTotal = total;
+    }
+
+    public void SetPaymentStatus(string status, string? detail = null)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return;
+        }
+
+        PaymentStatus = status.Trim();
+        PaymentDetail = string.IsNullOrWhiteSpace(detail) ? null : detail.Trim();
+        IsPaid = string.Equals(PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public void AddCapturedPhoto(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return;
+        }
+
+        _capturedPhotos.Add(filePath);
+    }
+
+    public void ClearCapturedPhotos()
+    {
+        _capturedPhotos.Clear();
+    }
+
+    public void SetSelectedMapping(int slotIndex, int photoIndex)
+    {
+        if (slotIndex <= 0 || photoIndex < 0)
+        {
+            return;
+        }
+
+        _selectedMapping[slotIndex] = photoIndex;
+    }
+
+    public void RemoveSelectedMapping(int slotIndex)
+    {
+        if (slotIndex <= 0)
+        {
+            return;
+        }
+
+        _selectedMapping.Remove(slotIndex);
+    }
+
+    public void ClearSelectedMapping()
+    {
+        _selectedMapping.Clear();
+    }
+
+    public void SetFinalImagePath(string? path)
+    {
+        FinalImagePath = string.IsNullOrWhiteSpace(path) ? null : path;
+    }
+
+    public void SetVideoPath(string? path)
+    {
+        VideoPath = string.IsNullOrWhiteSpace(path) ? null : path;
+    }
+
+    public void SetQrUrl(string? url)
+    {
+        QrUrl = string.IsNullOrWhiteSpace(url) ? null : url.Trim();
+    }
+
+    public void SetPrintJob(string? jobId, string? status = null)
+    {
+        PrintJobId = string.IsNullOrWhiteSpace(jobId) ? null : jobId.Trim();
+        PrintStatus = string.IsNullOrWhiteSpace(status) ? null : status.Trim();
+    }
+
+    public void MarkCompleted(DateTime endTime)
+    {
+        EndTime = endTime;
+    }
+
+    private void ResetPayment()
+    {
+        IsPaid = false;
+        TokensInserted = 0;
+        PriceTotal = 0m;
+        PaymentStatus = "Pending";
+        PaymentDetail = null;
     }
 }

@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using KawaiiStudio.App.Services;
 using KawaiiStudio.App.ViewModels;
 
@@ -6,6 +7,8 @@ namespace KawaiiStudio.App;
 
 public partial class App : Application
 {
+    public static SessionService? Session { get; private set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -13,8 +16,9 @@ public partial class App : Application
         var appPaths = AppPaths.Resolve();
         var frameCatalog = new FrameCatalogService(appPaths.FramesRoot);
         var themeCatalog = new ThemeCatalogService(appPaths.ThemeRoot);
-        var session = new SessionService();
+        var session = new SessionService(appPaths);
         var settings = new SettingsService(appPaths);
+        Session = session;
 
         var navigation = new NavigationService();
         var homeViewModel = new HomeViewModel(navigation, session, themeCatalog);
@@ -52,5 +56,52 @@ public partial class App : Application
 
         navigation.Navigate("home");
         window.Show();
+    }
+
+    public static void Log(string message)
+    {
+        Session?.AppendLog(message);
+    }
+
+    private void OnAnyButtonClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button)
+        {
+            return;
+        }
+
+        var label = FormatLogValue(button.Content?.ToString());
+        var screen = GetCurrentScreen();
+        var command = button.Command?.GetType().Name ?? "none";
+        var parameter = FormatLogValue(button.CommandParameter?.ToString());
+
+        Session?.AppendLog($"BUTTON_CLICK label={label} screen={screen} command={command} param={parameter}");
+    }
+
+    private static string GetCurrentScreen()
+    {
+        if (Current?.MainWindow?.DataContext is MainViewModel main &&
+            main.CurrentViewModel is ScreenViewModelBase screen)
+        {
+            return screen.ScreenKey;
+        }
+
+        if (Current?.MainWindow?.DataContext is MainViewModel fallback && fallback.CurrentViewModel is not null)
+        {
+            return fallback.CurrentViewModel.GetType().Name;
+        }
+
+        return "unknown";
+    }
+
+    private static string FormatLogValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "none";
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Replace(' ', '_');
     }
 }

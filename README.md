@@ -1,19 +1,24 @@
 # Kawaii Studio Photobooth
 
-Kiosk-style photobooth app for Windows with a simple customer flow and a frame-driven asset pipeline. This repo currently contains a WPF shell, asset scanning, and screen scaffolding aligned to the v0.1 spec in `specifications.txt`.
+Kiosk-style photobooth app for Windows with a simple customer flow and a frame-driven asset pipeline. This repo currently contains a WPF shell, navigation, asset scanning, and screen scaffolding aligned to the v0.1 spec in `specifications.txt`.
 
 ## Scope (current)
 
-- Full screen WPF shell with Home → Thank You flow
-- Asset library view for frames and backgrounds
+- Full screen WPF shell with Home -> Thank You flow
+- Screen navigation and session state for size, quantity, layout, and frame selection
+- Asset library view for frames and theme backgrounds
 - Frame auto-discovery from folder structure
 - Theme backgrounds per screen
+- Staff settings screen (pricing, max quantity, token value, printer name, cash COM)
+- Token-based payment placeholder (Add 5 Tokens button)
 
-## Customer Flow
+## Customer flow
 
-HOME → SIZE → QUANTITY → (LAYOUT if 4x6) → CATEGORY → FRAME → PAYMENT → CAPTURE → REVIEW → FINALIZE → PRINTING → THANK YOU → HOME
+HOME -> SIZE -> QUANTITY -> (LAYOUT if 4x6) -> CATEGORY -> FRAME -> PAYMENT -> CAPTURE -> REVIEW -> FINALIZE -> PRINTING -> THANK YOU -> HOME
 
-## Asset Folders
+## Asset folders
+
+The app resolves the config root by searching for `Config/` or `config/` near the executable.
 
 Frames (auto-discovery):
 
@@ -47,11 +52,29 @@ Config/themes/default/backgrounds/
 Runtime outputs (ignored by git):
 
 ```
-sessions/
+Config/logs/YYYYMMDD/session.log
 prints/
 videos/
-logs/
 ```
+
+## Settings
+
+The staff screen reads/writes `Config/appconfig.ini`:
+
+```
+PRICE1_26=10
+PRICE2_26=20
+...
+PRICE1_46=15
+PRICE2_46=30
+...
+MAX_QUANTITY=8
+TOKEN_VALUE=1
+PrintName=DS-RX1
+cash_COM=COM4
+```
+
+Pricing uses `PRICE{pairs}_{sizeCode}`, where size codes are `26` for 2x6 and `46` for 4x6.
 
 ## Templates
 
@@ -62,7 +85,7 @@ Template types are fixed by layout:
 - `4x6_4slots`
 - `4x6_6slots`
 
-Template geometry lives in `Config/templates.json`. A starter `2x6_4slots` entry is included based on `Config/frames/2x6/K-Pop/skz.png`.
+Template geometry lives in `Config/templates.json`. A starter `2x6_4slots` entry is included.
 
 ## Build
 
@@ -76,10 +99,11 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 - The current screens are placeholders for device integrations (camera, printer, payment).
 - See `specifications.txt` for the full functional spec and acceptance criteria.
 
-## Remaining Work (from `specifications.txt`)
+## Remaining work (from `specifications.txt`)
 
-- Payment logic is placeholder; needs pricing calculation and cash/card flows.
-- Capture screen needs countdown, live view, 8-shot capture, and video recording.
+- Replace token simulation with real cash acceptor + card provider flows.
+- Pricing should be per template type (2x6_4slots, 4x6_2slots/4slots/6slots).
+- Capture needs countdown, live view, 8-shot capture, and video recording via a camera provider.
 - Review/select needs thumbnail grid, slot assignment, and continue gating by filled slots.
 - Finalize/printing need composite render, QR generation, upload hooks, and print queue.
 - Auto-return timing and post-payment lockout rules are not enforced globally.
