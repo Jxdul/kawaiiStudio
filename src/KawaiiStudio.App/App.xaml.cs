@@ -29,6 +29,7 @@ public partial class App : Application
         var frameOverrides = new FrameOverrideService();
         var themeCatalog = new ThemeCatalogService(appPaths.ThemeRoot);
         var session = new SessionService(appPaths);
+        session.PruneOldLogs(7);
         var settings = new SettingsService(appPaths);
         _settings = settings;
         Settings = settings;

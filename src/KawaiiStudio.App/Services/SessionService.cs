@@ -19,6 +19,41 @@ public sealed class SessionService
         _logFilePath = Path.Combine(_runDateFolder, "session.log");
     }
 
+    public void PruneOldLogs(int retentionDays)
+    {
+        if (retentionDays <= 0 || !Directory.Exists(_sessionsRoot))
+        {
+            return;
+        }
+
+        var cutoff = DateTime.Today.AddDays(-retentionDays);
+        foreach (var directory in Directory.GetDirectories(_sessionsRoot))
+        {
+            var name = Path.GetFileName(directory);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            if (!DateTime.TryParseExact(name, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var date))
+            {
+                continue;
+            }
+
+            if (date < cutoff)
+            {
+                try
+                {
+                    Directory.Delete(directory, true);
+                }
+                catch
+                {
+                    // Ignore cleanup failures to avoid blocking startup.
+                }
+            }
+        }
+    }
+
     public SessionState Current { get; } = new();
 
     public void StartNewSession()
