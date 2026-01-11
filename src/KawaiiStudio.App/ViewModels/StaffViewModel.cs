@@ -40,6 +40,7 @@ public sealed class StaffViewModel : ScreenViewModelBase
         NumpadInputCommand = new RelayCommand<string>(NumpadInput);
         NumpadBackspaceCommand = new RelayCommand(NumpadBackspace);
         NumpadClearCommand = new RelayCommand(NumpadClear);
+        OpenTemplateEditorCommand = new RelayCommand(() => _navigation.Navigate("template_editor"));
         BackCommand = new RelayCommand(() => _navigation.Navigate("home"));
     }
 
@@ -55,6 +56,7 @@ public sealed class StaffViewModel : ScreenViewModelBase
     public ICommand NumpadInputCommand { get; }
     public ICommand NumpadBackspaceCommand { get; }
     public ICommand NumpadClearCommand { get; }
+    public ICommand OpenTemplateEditorCommand { get; }
     public ICommand BackCommand { get; }
 
     public string MaxQuantity

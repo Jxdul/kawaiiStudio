@@ -20,18 +20,97 @@
       <Grid Grid.Row="1">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="260" />
+          <ColumnDefinition Width="300" />
         </Grid.ColumnDefinitions>
 
         <Border Background="#101010" CornerRadius="12" Margin="0,0,16,0">
           <Grid>
-            <TextBlock Text="Frame Preview" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#B8B8B8" />
+            <Image Source="{Binding PreviewImage}" Stretch="Uniform" />
+            <TextBlock Text="Frame Preview" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#B8B8B8">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding PreviewImage}" Value="{x:Null}">
+                      <Setter Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
           </Grid>
         </Border>
 
         <StackPanel Grid.Column="1">
-          <TextBlock Text="Select photos to fill the slots" FontSize="14" Foreground="#B8B8B8" Margin="0,0,0,12" />
-          <Button Content="Continue" Command="{Binding ContinueCommand}" FontSize="18" Padding="18,10" />
+          <TextBlock Text="{Binding StatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,0,0,6" />
+          <TextBlock Text="{Binding SlotSummary}" FontSize="12" Foreground="#B8B8B8" Margin="0,0,0,12" />
+
+          <TextBlock Text="No photos captured yet." FontSize="12" Foreground="#B8B8B8" Margin="0,0,0,12">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasPhotos}" Value="False">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Photos}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel ItemWidth="140" ItemHeight="100" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Command="{Binding DataContext.SelectPhotoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          CommandParameter="{Binding}"
+                          Margin="0,0,8,8"
+                          Padding="0">
+                    <Border Background="#1A1A1A" CornerRadius="8">
+                      <Grid Width="140" Height="100">
+                        <Image Source="{Binding FilePath, Converter={StaticResource FilePathToImage}}" Stretch="UniformToFill" />
+                        <Border Background="#66000000">
+                          <Border.Style>
+                            <Style TargetType="Border">
+                              <Setter Property="Visibility" Value="Collapsed" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                  <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </Border.Style>
+                        </Border>
+                        <TextBlock Text="{Binding SlotLabel}" FontSize="18" FontWeight="SemiBold" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Setter Property="Visibility" Value="Collapsed" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                  <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+                      </Grid>
+                    </Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Back" Command="{Binding BackCommand}" Padding="16,8" />
+            <Button Content="Continue" Command="{Binding ContinueCommand}" Padding="16,8" Margin="8,0,0,0" />
+          </StackPanel>
         </StackPanel>
       </Grid>
     </Grid>

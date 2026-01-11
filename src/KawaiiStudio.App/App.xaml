@@ -67,5 +67,8 @@
     <DataTemplate DataType="{x:Type vm:StaffViewModel}">
       <views:StaffView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:TemplateEditorViewModel}">
+      <views:TemplateEditorView />
+    </DataTemplate>
   </Application.Resources>
 </Application>

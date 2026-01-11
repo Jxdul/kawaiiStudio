@@ -110,6 +110,14 @@
             </StackPanel>
           </Border>
 
+          <Border Background="#1A1A1A" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+            <StackPanel>
+              <TextBlock Text="Templates &amp; QR" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
+              <TextBlock Text="Adjust slot and QR placement for each template." FontSize="12" Foreground="#B8B8B8" Margin="0,0,0,8" />
+              <Button Content="Open Template Editor" Command="{Binding OpenTemplateEditorCommand}" Padding="16,8" />
+            </StackPanel>
+          </Border>
+
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Reload" Command="{Binding ReloadCommand}" Padding="16,8" />
             <Button Content="Save" Command="{Binding SaveCommand}" Padding="16,8" Margin="8,0,0,0" />

@@ -24,9 +24,21 @@ public sealed class SessionService
     public void StartNewSession()
     {
         var now = DateTime.Now;
-        var sessionId = Guid.NewGuid().ToString("N");
-        Current.Reset(sessionId, now, _runDateFolder);
-        AppendLog($"SESSION_START id={sessionId}");
+        var sessionIndex = GetNextSessionIndex();
+        var sessionName = $"session_{sessionIndex}";
+        var sessionFolder = Path.Combine(_runDateFolder, sessionName);
+        Directory.CreateDirectory(sessionFolder);
+
+        var photosFolder = Path.Combine(sessionFolder, "photos");
+        var previewFramesFolder = Path.Combine(sessionFolder, "preview_frames");
+        var videosFolder = Path.Combine(sessionFolder, "videos");
+
+        Directory.CreateDirectory(photosFolder);
+        Directory.CreateDirectory(previewFramesFolder);
+        Directory.CreateDirectory(videosFolder);
+
+        Current.Reset(sessionName, now, sessionFolder, photosFolder, previewFramesFolder, videosFolder);
+        AppendLog($"SESSION_START id={sessionName}");
     }
 
     public void EndSession()
@@ -69,5 +81,36 @@ public sealed class SessionService
 
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         File.AppendAllText(_logFilePath, $"{timestamp} {message}{Environment.NewLine}");
+    }
+
+    private int GetNextSessionIndex()
+    {
+        var nextIndex = 1;
+        if (!Directory.Exists(_runDateFolder))
+        {
+            return nextIndex;
+        }
+
+        foreach (var directory in Directory.GetDirectories(_runDateFolder, "session_*"))
+        {
+            var name = Path.GetFileName(directory);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            var suffix = name.Substring("session_".Length);
+            if (!int.TryParse(suffix, out var parsed))
+            {
+                continue;
+            }
+
+            if (parsed >= nextIndex)
+            {
+                nextIndex = parsed + 1;
+            }
+        }
+
+        return nextIndex;
     }
 }

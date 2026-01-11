@@ -18,8 +18,11 @@
       </DockPanel>
 
       <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Text="Render composite, generate QR, queue print" FontSize="16" Foreground="#B8B8B8" Margin="0,0,0,16" />
-        <Button Content="Send to Print" Command="{Binding ContinueCommand}" FontSize="18" Padding="18,10" />
+        <TextBlock Text="{Binding StatusText}" FontSize="16" Foreground="#B8B8B8" Margin="0,0,0,16" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+          <Button Content="Back" Command="{Binding BackCommand}" Padding="16,8" />
+          <Button Content="Send to Print" Command="{Binding ContinueCommand}" FontSize="18" Padding="18,10" Margin="8,0,0,0" />
+        </StackPanel>
       </StackPanel>
     </Grid>
   </Grid>

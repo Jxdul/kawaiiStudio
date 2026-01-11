@@ -17,6 +17,7 @@ public sealed class AppPaths
         PrintsRoot = Path.Combine(appRoot, "prints");
         VideosRoot = Path.Combine(appRoot, "videos");
         LogsRoot = Path.Combine(configRoot, "logs");
+        TemplatesPath = Path.Combine(configRoot, "templates.json");
     }
 
     public string AppRoot { get; }
@@ -27,6 +28,7 @@ public sealed class AppPaths
     public string PrintsRoot { get; }
     public string VideosRoot { get; }
     public string LogsRoot { get; }
+    public string TemplatesPath { get; }
 
     public static AppPaths Resolve()
     {

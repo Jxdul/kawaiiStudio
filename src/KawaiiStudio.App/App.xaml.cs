@@ -16,6 +16,7 @@ public partial class App : Application
 
     public static SessionService? Session { get; private set; }
     public static NavigationService? Navigation { get; private set; }
+    public static SettingsService? Settings { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -23,13 +24,19 @@ public partial class App : Application
 
         var appPaths = AppPaths.Resolve();
         var frameCatalog = new FrameCatalogService(appPaths.FramesRoot);
+        var templateCatalog = new TemplateCatalogService(appPaths.TemplatesPath);
+        var templateStorage = new TemplateStorageService(appPaths.TemplatesPath);
+        var frameOverrides = new FrameOverrideService();
         var themeCatalog = new ThemeCatalogService(appPaths.ThemeRoot);
         var session = new SessionService(appPaths);
         var settings = new SettingsService(appPaths);
         _settings = settings;
+        Settings = settings;
         Session = session;
         var cameraProvider = CreateCameraProvider(settings);
         var cameraService = new CameraService(cameraProvider);
+        var qrCodes = new QrCodeService();
+        var frameComposer = new FrameCompositionService(templateCatalog, qrCodes, frameOverrides);
 
         EventManager.RegisterClassHandler(typeof(Button), Button.ClickEvent, new RoutedEventHandler(OnAnyButtonClicked));
         InputManager.Current.PreProcessInput += OnPreProcessInput;
@@ -48,12 +55,13 @@ public partial class App : Application
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
         var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings);
         var captureViewModel = new CaptureViewModel(navigation, session, cameraService, themeCatalog);
-        var reviewViewModel = new ReviewViewModel(navigation, themeCatalog);
-        var finalizeViewModel = new FinalizeViewModel(navigation, themeCatalog);
-        var printingViewModel = new PrintingViewModel(navigation, themeCatalog);
+        var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);
+        var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, themeCatalog);
+        var printingViewModel = new PrintingViewModel(navigation, session, themeCatalog);
         var thankYouViewModel = new ThankYouViewModel(navigation, session, themeCatalog);
         var libraryViewModel = new LibraryViewModel(navigation, frameCatalog, themeCatalog, appPaths);
         var staffViewModel = new StaffViewModel(navigation, themeCatalog, settings);
+        var templateEditorViewModel = new TemplateEditorViewModel(navigation, templateStorage, templateCatalog, frameCatalog, frameOverrides, themeCatalog);
 
         navigation.Register("error", errorViewModel);
         navigation.Register("startup", startupViewModel);
@@ -71,6 +79,7 @@ public partial class App : Application
         navigation.Register("thank_you", thankYouViewModel);
         navigation.Register("library", libraryViewModel);
         navigation.Register("staff", staffViewModel);
+        navigation.Register("template_editor", templateEditorViewModel);
 
         var mainViewModel = new MainViewModel(navigation);
         var window = new MainWindow { DataContext = mainViewModel };

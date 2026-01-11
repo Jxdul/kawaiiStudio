@@ -127,3 +127,12 @@ C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windo
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\StaffView.g.cs
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\EDSDK.dll
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\EdsImage.dll
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\ErrorView.baml
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\StartupView.baml
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\ErrorView.g.cs
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\StartupView.g.cs
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\QRCoder.dll
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\KawaiiStudio.App.csproj.AssemblyReference.cache
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\TemplateEditorView.baml
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\TemplateEditorView.g.cs
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\KawaiiSt.E96FA301.Up2Date

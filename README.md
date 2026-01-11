@@ -1,20 +1,25 @@
 # Kawaii Studio Photobooth
 
-Kiosk-style photobooth app for Windows with a simple customer flow and a frame-driven asset pipeline. This repo currently contains a WPF shell, navigation, asset scanning, and screen scaffolding aligned to the v0.1 spec in `specifications.txt`.
+Kiosk-style photobooth app for Windows with a simple customer flow and a frame-driven asset pipeline. This repo currently contains a WPF shell, navigation, asset scanning, template editing, and device scaffolding aligned to the v0.1 spec in `specifications.txt`.
 
 ## Scope (current)
 
-- Full screen WPF shell with Home -> Thank You flow
+- Full screen WPF shell with Startup -> Home -> Thank You flow
 - Screen navigation and session state for size, quantity, layout, and frame selection
-- Asset library view for frames and theme backgrounds
+- Startup checks with test mode + camera error screen
 - Frame auto-discovery from folder structure
 - Theme backgrounds per screen
-- Staff settings screen (pricing, max quantity, token value, printer name, cash COM)
+- Staff settings screen (pricing, timeouts, hardware, test mode)
+- Template editor with drag/resize slot + QR placement per template
+- Per-frame overrides saved next to individual frames
+- Review selection with slot mapping + composite preview
+- Composite rendering with QR overlay and print-ready output
+- Print preview screen (4x6, with 2x6 duplicated)
 - Token-based payment placeholder (Add 5 Tokens button)
 
 ## Customer flow
 
-HOME -> SIZE -> QUANTITY -> (LAYOUT if 4x6) -> CATEGORY -> FRAME -> PAYMENT -> CAPTURE -> REVIEW -> FINALIZE -> PRINTING -> THANK YOU -> HOME
+STARTUP -> HOME -> SIZE -> QUANTITY -> (LAYOUT if 4x6) -> CATEGORY -> FRAME -> PAYMENT -> CAPTURE -> REVIEW -> FINALIZE -> PRINTING -> THANK YOU -> HOME
 
 ## Asset folders
 
@@ -30,10 +35,19 @@ Config/frames/
   4x6/6slots/<Category>/*.png
 ```
 
+Optional per-frame overrides live next to the PNG:
+
+```
+frame001.png
+frame001.layout.json
+```
+
 Theme backgrounds (first image per folder is used):
 
 ```
 Config/themes/default/backgrounds/
+  startup/
+  error/
   home/
   size/
   quantity/
@@ -46,6 +60,7 @@ Config/themes/default/backgrounds/
   finalize/
   printing/
   thank_you/
+  template_editor/
   staff/... (optional)
 ```
 
@@ -53,9 +68,16 @@ Runtime outputs (ignored by git):
 
 ```
 Config/logs/YYYYMMDD/session.log
+Config/logs/YYYYMMDD/session_1/
+  photos/
+  preview_frames/
+  videos/
+  session_1_final.png
 prints/
 videos/
 ```
+
+Each `session_x` folder stores captured photos in `photos/`, low-frame-rate live view frames in `preview_frames/`, and the final compiled video in `videos/`.
 
 ## Settings
 
@@ -72,6 +94,12 @@ MAX_QUANTITY=8
 TOKEN_VALUE=1
 PrintName=DS-RX1
 cash_COM=COM4
+TEST_MODE=false
+CAMERA_PROVIDER=simulated
+TIMEOUT_DEFAULT=45
+TIMEOUT_HOME=45
+TIMEOUT_CAPTURE=45
+TIMEOUT_REVIEW=45
 ```
 
 Pricing uses `PRICE{pairs}_{sizeCode}`, where size codes are `26` for 2x6 and `46` for 4x6.
@@ -85,7 +113,9 @@ Template types are fixed by layout:
 - `4x6_4slots`
 - `4x6_6slots`
 
-Template geometry lives in `Config/templates.json`. A starter `2x6_4slots` entry is included.
+Template geometry lives in `Config/templates.json`. The staff Template Editor lets you adjust slots + QR per template and save per-frame overrides (stored as `*.layout.json` alongside the frame PNG).
+
+Print output is always 4x6 (1200x1800). For 2x6 prints, the 2x6 composite is duplicated side-by-side into the 4x6 canvas.
 
 ## Build
 
@@ -103,12 +133,8 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 
 - Replace token simulation with real cash acceptor + card provider flows.
 - Pricing should be per template type (2x6_4slots, 4x6_2slots/4slots/6slots).
-- Capture needs countdown, live view, 8-shot capture, and video recording via a camera provider.
-- Review/select needs thumbnail grid, slot assignment, and continue gating by filled slots.
-- Finalize/printing need composite render, QR generation, upload hooks, and print queue.
-- Auto-return timing and post-payment lockout rules are not enforced globally.
+- Capture needs live view, video recording, and configurable timers via settings.
+- Upload hooks, QR destination hosting, and print queue integration are not implemented.
 - Config parsing for `config/app.json` and `config/pricing.json` is not implemented.
-- Session model lacks required fields (sessionId, timestamps, photos, mapping, outputs).
-- Provider interfaces for camera/payment/printer/upload are not defined yet.
-- Inactivity timers, error handling, and "Call Staff" flow are missing.
-- Staff menu (secret access, timers/pricing/devices/logs) is not implemented.
+- Provider interfaces for payment/printer/upload are not defined yet.
+- Staff menu secret access, device diagnostics, and log export are not implemented.

@@ -13,7 +13,10 @@
       <StackPanel>
         <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,8" />
         <TextBlock Text="{Binding Message}" FontSize="14" Foreground="#B8B8B8" TextWrapping="Wrap" Margin="0,0,0,16" />
-        <Button Content="Close Program" Command="{Binding CloseCommand}" Padding="16,8" HorizontalAlignment="Right" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button Content="Enable Test Mode" Command="{Binding EnableTestModeCommand}" Padding="16,8" />
+          <Button Content="Close Program" Command="{Binding CloseCommand}" Padding="16,8" Margin="8,0,0,0" />
+        </StackPanel>
       </StackPanel>
     </Border>
   </Grid>

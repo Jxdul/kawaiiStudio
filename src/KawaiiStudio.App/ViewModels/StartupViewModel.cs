@@ -14,6 +14,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private readonly ErrorViewModel _errorViewModel;
     private readonly RelayCommand _retryCommand;
     private readonly RelayCommand _continueCommand;
+    private readonly RelayCommand _enableTestModeCommand;
     private CancellationTokenSource? _cts;
     private bool _isChecking;
     private bool _canContinue;
@@ -36,12 +37,15 @@ public sealed class StartupViewModel : ScreenViewModelBase
         RetryCommand = _retryCommand;
         _continueCommand = new RelayCommand(Continue, () => _canContinue);
         ContinueCommand = _continueCommand;
+        _enableTestModeCommand = new RelayCommand(EnableTestMode);
+        EnableTestModeCommand = _enableTestModeCommand;
     }
 
     public ObservableCollection<StartupCheckItem> Checks { get; } = new();
 
     public ICommand RetryCommand { get; }
     public ICommand ContinueCommand { get; }
+    public ICommand EnableTestModeCommand { get; }
 
     public string ModeText
     {
@@ -86,8 +90,22 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private async Task RunChecksAsync(bool testMode, CancellationToken token)
     {
         var cameraOk = await CheckCameraAsync(testMode, token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
         var cashOk = await CheckPlaceholderAsync(Checks[1], "Cash reader", testMode, token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
         var serverOk = await CheckPlaceholderAsync(Checks[2], "Server", testMode, token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
 
         var allOk = cameraOk && cashOk && serverOk;
         UpdateCanContinue(allOk);
@@ -123,11 +141,35 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
     private async Task<bool> CheckCameraAsync(bool testMode, CancellationToken token)
     {
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
         var item = Checks[0];
+        if (testMode)
+        {
+            _camera.UseProvider(new SimulatedCameraProvider());
+            var simulated = await _camera.ConnectAsync(token);
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            item.SetStatus("Simulated", "Test mode", simulated);
+            KawaiiStudio.App.App.Log("STARTUP_CAMERA_SIMULATED");
+            return simulated;
+        }
+
         item.SetStatus("Connecting...", string.Empty, false);
         KawaiiStudio.App.App.Log("STARTUP_CAMERA_CHECK");
 
         var connected = await _camera.ConnectAsync(token);
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
         if (connected)
         {
             item.SetStatus("Connected", string.Empty, true);
@@ -140,6 +182,11 @@ public sealed class StartupViewModel : ScreenViewModelBase
             KawaiiStudio.App.App.Log("STARTUP_CAMERA_FALLBACK simulated");
             _camera.UseProvider(new SimulatedCameraProvider());
             var simulated = await _camera.ConnectAsync(token);
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
             if (simulated)
             {
                 item.SetStatus("Simulated", "Camera unavailable", true);
@@ -150,7 +197,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         item.SetStatus("Failed", "Camera not connected", false);
         KawaiiStudio.App.App.Log("STARTUP_CAMERA_FAILED");
 
-        if (!testMode)
+        if (!testMode && !token.IsCancellationRequested)
         {
             _errorViewModel.SetError("Camera Connection Failed", "Camera not connected. Please check the cable and power, then restart.");
             _navigation.Navigate("error");
@@ -165,9 +212,12 @@ public sealed class StartupViewModel : ScreenViewModelBase
         bool testMode,
         CancellationToken token)
     {
+        if (token.IsCancellationRequested)
+        {
+            return Task.FromResult(false);
+        }
+
         item.SetStatus("Checking...", string.Empty, false);
-        _ = token;
-        _ = name;
 
         if (testMode)
         {
@@ -190,6 +240,14 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private void Continue()
     {
         _navigation.Navigate("home");
+    }
+
+    private void EnableTestMode()
+    {
+        _settings.SetValue("TEST_MODE", "true");
+        _settings.Save();
+        KawaiiStudio.App.App.Log("STARTUP_ENABLE_TEST_MODE");
+        StartChecks();
     }
 }
 

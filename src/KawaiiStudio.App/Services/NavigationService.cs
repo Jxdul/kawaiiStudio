@@ -63,7 +63,8 @@ public sealed class NavigationService
             return true;
         }
 
-        if (string.Equals(key, "staff", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(key, "staff", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(key, "template_editor", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }

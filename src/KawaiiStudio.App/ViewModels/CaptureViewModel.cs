@@ -98,6 +98,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         _isCapturing = true;
         _continueCommand.RaiseCanExecuteChanged();
         _session.Current.ClearCapturedPhotos();
+        _session.Current.ClearSelectedMapping();
         _captureCts = new CancellationTokenSource();
         var token = _captureCts.Token;
 
@@ -172,15 +173,15 @@ public sealed class CaptureViewModel : ScreenViewModelBase
 
     private string? BuildShotPath(int shotIndex)
     {
-        var sessionFolder = _session.Current.SessionFolder;
-        if (string.IsNullOrWhiteSpace(sessionFolder))
+        var photosFolder = _session.Current.PhotosFolder ?? _session.Current.SessionFolder;
+        if (string.IsNullOrWhiteSpace(photosFolder))
         {
             return null;
         }
 
         var sessionId = string.IsNullOrWhiteSpace(_session.Current.SessionId) ? "session" : _session.Current.SessionId;
         var fileName = $"{sessionId}_shot_{shotIndex:00}.png";
-        return Path.Combine(sessionFolder, fileName);
+        return Path.Combine(photosFolder, fileName);
     }
 
 }

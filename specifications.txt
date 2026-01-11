@@ -40,6 +40,7 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 
 * Kiosk UI flow (customer + staff).
 * Frame scanning from folders (categories + templates).
+* Template editor for slot/QR placement (per template + per frame overrides).
 * Cash payment via **serial bill acceptor**.
 * Card payment: **placeholder architecture** (implementation TBD).
 * Canon camera integration via **Canon SDK/API**.
@@ -53,7 +54,7 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 
 * Online admin portal.
 * Multi-language support (can be added later).
-* Complex frame slot geometry per-frame (slots are fixed per template type).
+* Automatic slot detection from frame art files.
 
 ---
 
@@ -62,6 +63,7 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 * **Session:** One customer run from “Tap to Start” until returning Home.
 * **Template type:** Determines slot count & placement (fixed layouts).
 * **Frame:** Transparent overlay PNG placed above composed photos.
+* **Frame override:** Optional per-frame slot + QR layout stored next to a frame PNG.
 * **Slots:** Rectangles where chosen photos appear within a template.
 * **Even quantity rule:** Prints must be purchased in **2, 4, 6, 8…**
 
@@ -84,7 +86,7 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 
 ## 6) User Experience: State Machine (Primary Flow)
 
-**HOME → SIZE → QUANTITY → (LAYOUT if 4×6) → CATEGORY → FRAME → PAYMENT → CAPTURE → REVIEW/SELECT → FINALIZE → PRINTING → THANK YOU → HOME**
+**STARTUP -> HOME -> SIZE -> QUANTITY -> (LAYOUT if 4x6) -> CATEGORY -> FRAME -> PAYMENT -> CAPTURE -> REVIEW/SELECT -> FINALIZE -> PRINTING -> THANK YOU -> HOME**
 
 At any point:
 
@@ -94,6 +96,36 @@ At any point:
 ---
 
 ## 7) Customer Screens (Screen-by-Screen Requirements)
+
+### 7.0 Startup Checks
+
+**UI**
+
+* Status list for camera, cash reader, server.
+* Test mode indicator + button to enable test mode.
+* Continue button when checks pass.
+
+**Logic**
+
+* If camera fails and test mode is off, show the error screen.
+* If test mode is enabled, camera uses simulated provider.
+* Cash/server placeholders may still show failed while in test mode.
+
+---
+
+### 7.0a Error Screen (Camera Failure)
+
+**UI**
+
+* Friendly error message and troubleshooting hint.
+* Close program button.
+* Enable test mode button.
+
+**Logic**
+
+* Enabling test mode returns to Startup Checks.
+
+---
 
 ### 7.1 Home / Attract
 
@@ -178,6 +210,7 @@ UI:
 Rules:
 
 * Frames are loaded from disk; new frames appear automatically.
+* If a frame has a layout override file, use it for slot + QR placement.
 * Frame selection determines:
 
   * overlay image (PNG)
@@ -225,6 +258,9 @@ Rules:
 
   * starts at beginning of capture
   * ends after last shot (or after review starts; configurable)
+* **Preview frames**:
+
+  * save low-frame-rate live view images to `preview_frames/` during capture
 * Must handle camera disconnect:
 
   * show “Call Staff”
@@ -268,7 +304,9 @@ Actions:
 
   * place selected photos into template slots
   * apply frame overlay PNG
+  * apply QR overlay (template or per-frame override)
   * render print-ready at correct resolution
+* Render final session video (e.g., via ffmpeg) and save to `videos/`
 * Generate QR code (top-right placement; see §9)
 
   * QR links to a landing page containing:
@@ -277,6 +315,7 @@ Actions:
     * video download/playback
     * optional review link
 * Save outputs to session folder and enqueue print.
+* Print output is always 4x6 (1200x1800); 2x6 is duplicated side-by-side.
 
 ---
 
@@ -284,7 +323,8 @@ Actions:
 
 UI:
 
-* “Printing…” status
+* Printing status
+* Print preview (actual output)
 * Show QR for review link (optional)
 * Thank-you message
 
@@ -327,7 +367,7 @@ Example:
 
 ## 9) Template Types & Slot Geometry
 
-Slots are **fixed per template type** (not per frame). Frames must match the template’s pixel dimensions.
+Slots are **fixed per template type** but can be overridden per frame via layout files. Frames must match the template's pixel dimensions.
 
 Template types:
 
@@ -341,6 +381,7 @@ Each template defines:
 * Canvas size in pixels (print-ready)
 * Slot rectangles: `x, y, width, height`
 * QR placement rectangle (top-right) and size
+* Optional per-frame overrides saved as `*.layout.json`
 * Optional padding/bleed settings
 
 ---
@@ -352,6 +393,14 @@ Each template defines:
 ```
 PhotoboothApp/
   config/
+    templates.json
+    logs/
+      YYYYMMDD/
+        session.log
+        session_1/
+          photos/
+          preview_frames/
+          videos/
   themes/
     default/
       screens/
@@ -364,6 +413,7 @@ PhotoboothApp/
     2x6/
       Kawaii Alley/
         frame001.png
+        frame001.layout.json
         frame002.png
       Cute/
         frameA.png
@@ -371,16 +421,15 @@ PhotoboothApp/
       2slots/
         Seasonal/
           frame1.png
+          frame1.layout.json
       4slots/
         K-Pop/
           frame77.png
       6slots/
         Cute/
           frame9.png
-  sessions/
   prints/
   videos/
-  logs/
 ```
 
 ### 10.2 Frame file rules
@@ -389,7 +438,14 @@ PhotoboothApp/
 * Must match the template type’s expected dimensions
 * File name becomes display name unless overridden via optional metadata
 
-### 10.3 Optional frame metadata (future-ready)
+### 10.3 Per-frame layout overrides
+
+If a frame needs custom slot/QR placement, add a layout file next to the PNG:
+
+* `frame001.png`
+* `frame001.layout.json` (slots + qr in the same format as `templates.json`)
+
+### 10.4 Optional frame metadata (future-ready)
 
 If you want nicer names/thumbnails later:
 
@@ -465,6 +521,12 @@ Configurable method(s), e.g.:
    * Reboot/shutdown (optional)
    * “Safe mode” toggle (load default theme)
 
+9. **Template Editor**
+
+   * Drag/resize slot placeholders
+   * Drag/resize QR placement
+   * Save per template or per frame overrides
+
 ---
 
 ## 12) Error Handling & Recovery Rules
@@ -530,9 +592,10 @@ Minimum fields:
 * `paymentStatus` + details
 * `cashEvents[]`
 * `capturedPhotos[8]` (file paths)
+* `previewFramesFolder` (low-frame-rate live view images)
 * `selectedMapping` (slot → photoIndex)
 * `finalImagePath`
-* `videoPath`
+* `finalVideoPath`
 * `qrUrl`
 * `printJobId` + status
 
@@ -546,7 +609,7 @@ Minimum fields:
 {
   "kiosk": { "inactivitySeconds": 45, "lockAfterPayment": true },
   "capture": { "shotCount": 8, "countdownSeconds": 3, "secondsBetweenShots": 4 },
-  "paths": { "frames": "./frames", "themes": "./themes/default", "sessions": "./sessions" },
+  "paths": { "frames": "./frames", "themes": "./themes/default", "logs": "./config/logs" },
   "devices": {
     "cashAcceptor": { "enabled": true, "comPort": "COM3", "baudRate": 9600 },
     "printer": { "enabled": true },
@@ -573,19 +636,19 @@ Minimum fields:
 ```json
 {
   "2x6_4slots": {
-    "canvas": { "width": 1200, "height": 3600 },
+    "canvas": { "width": 600, "height": 1800 },
     "slots": [
-      { "x": 80, "y": 200, "w": 1040, "h": 620 },
-      { "x": 80, "y": 880, "w": 1040, "h": 620 },
-      { "x": 80, "y": 1560, "w": 1040, "h": 620 },
-      { "x": 80, "y": 2240, "w": 1040, "h": 620 }
+      { "x": 32, "y": 171, "w": 536, "h": 356 },
+      { "x": 32, "y": 581, "w": 536, "h": 356 },
+      { "x": 32, "y": 991, "w": 536, "h": 356 },
+      { "x": 32, "y": 1403, "w": 536, "h": 356 }
     ],
-    "qr": { "x": 930, "y": 40, "w": 220, "h": 220 }
+    "qr": { "x": 465, "y": 20, "w": 110, "h": 110 }
   }
 }
 ```
 
-(Real pixel sizes should match your printer/media pipeline; values above are placeholders.)
+(Real pixel sizes should match your printer/media pipeline; 4x6 templates are 1200x1800. 2x6 outputs are duplicated onto a 1200x1800 print.)
 
 ---
 
@@ -631,6 +694,7 @@ To keep card payments and devices swappable, implement providers:
 * [ ] Final image includes QR top-right
 * [ ] QR resolves to page with image + video
 * [ ] Reprint last includes preview
+* [ ] Per-frame layout overrides apply when present
 
 ### Staff tools
 
@@ -646,3 +710,4 @@ To keep card payments and devices swappable, implement providers:
 2. **Upload target:** local server vs cloud (affects QR landing page) # maybe will try to be on cloudflare
 3. **Card payment provider:** Square/Stripe terminal/Moneris/etc. (API constraints) # will try stripe
 4. **Exact print resolution/DPI & template pixel sizes** for each product # 1200 × 1800 for the full print. 2x6 will have to be duplicated side by side then sent to printer after with the option of cutting in half.
+

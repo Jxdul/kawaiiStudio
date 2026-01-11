@@ -12,6 +12,9 @@ public sealed class SessionState
     public DateTime StartTime { get; private set; }
     public DateTime? EndTime { get; private set; }
     public string? SessionFolder { get; private set; }
+    public string? PhotosFolder { get; private set; }
+    public string? PreviewFramesFolder { get; private set; }
+    public string? VideosFolder { get; private set; }
 
     public PrintSize? Size { get; private set; }
     public int? Quantity { get; private set; }
@@ -71,12 +74,21 @@ public sealed class SessionState
         }
     }
 
-    public void Reset(string sessionId, DateTime startTime, string sessionFolder)
+    public void Reset(
+        string sessionId,
+        DateTime startTime,
+        string sessionFolder,
+        string photosFolder,
+        string previewFramesFolder,
+        string videosFolder)
     {
         SessionId = sessionId;
         StartTime = startTime;
         EndTime = null;
         SessionFolder = sessionFolder;
+        PhotosFolder = photosFolder;
+        PreviewFramesFolder = previewFramesFolder;
+        VideosFolder = videosFolder;
         Size = null;
         Quantity = null;
         Layout = null;
