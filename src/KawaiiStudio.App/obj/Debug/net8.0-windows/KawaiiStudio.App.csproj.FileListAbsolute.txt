@@ -125,3 +125,5 @@ C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windo
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\ref\KawaiiStudio.App.dll
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\StaffView.baml
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\obj\Debug\net8.0-windows\Views\StaffView.g.cs
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\EDSDK.dll
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\EdsImage.dll

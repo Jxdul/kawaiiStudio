@@ -7,4 +7,18 @@
     <UseWPF>true</UseWPF>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\third_party\canon\EDSDK_v13.20.10_Windows\sample\CSharp\CameraControl\CameraControl\EDSDK.cs"
+             Condition="Exists('..\..\third_party\canon\EDSDK_v13.20.10_Windows\sample\CSharp\CameraControl\CameraControl\EDSDK.cs')"
+             Link="EDSDK.cs" />
+    <None Include="..\..\third_party\canon\EDSDK_v13.20.10_Windows\EDSDK_64\Dll\EDSDK.dll"
+          Condition="Exists('..\..\third_party\canon\EDSDK_v13.20.10_Windows\EDSDK_64\Dll\EDSDK.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\third_party\canon\EDSDK_v13.20.10_Windows\EDSDK_64\Dll\EdsImage.dll"
+          Condition="Exists('..\..\third_party\canon\EDSDK_v13.20.10_Windows\EDSDK_64\Dll\EdsImage.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

@@ -30,8 +30,9 @@
         </Border>
 
         <StackPanel Grid.Column="1">
-          <TextBlock Text="Capture will take 8 photos" FontSize="14" Foreground="#B8B8B8" Margin="0,0,0,12" />
-          <Button Content="Simulate Capture" Command="{Binding ContinueCommand}" FontSize="18" Padding="18,10" />
+          <TextBlock Text="{Binding StatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,0,0,8" />
+          <TextBlock Text="{Binding ProgressText}" FontSize="14" Foreground="#B8B8B8" Margin="0,0,0,12" />
+          <Button Content="{Binding CaptureButtonText}" Command="{Binding ContinueCommand}" FontSize="18" Padding="18,10" />
         </StackPanel>
       </Grid>
     </Grid>

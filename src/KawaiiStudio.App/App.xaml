@@ -22,6 +22,12 @@
     <DataTemplate DataType="{x:Type vm:HomeViewModel}">
       <views:HomeView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:StartupViewModel}">
+      <views:StartupView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ErrorViewModel}">
+      <views:ErrorView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:SizeViewModel}">
       <views:SizeView />
     </DataTemplate>

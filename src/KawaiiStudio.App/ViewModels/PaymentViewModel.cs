@@ -112,7 +112,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private decimal CalculateTotalPrice()
     {
         var session = _session.Current;
-        var total = _settings.GetPrice(session.Size, session.Quantity);
+        var total = _settings.GetPrice(session.TemplateType, session.Quantity);
         session.SetPriceTotal(total);
         _tokensRequired = CalculateTokensRequired(total, _settings.TokenValue);
         return total;
