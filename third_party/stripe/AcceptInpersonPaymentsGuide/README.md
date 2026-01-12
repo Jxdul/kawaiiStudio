@@ -13,7 +13,9 @@ dotnet restore
 2. Run the server
 
 ~~~
-dotnet run
+dotnet run --project StripeExample.csproj
 ~~~
 
 3. Go to [http://localhost:4242](http://localhost:4242)
+
+Note: running `dotnet run` with `Server.cs` directly will fail because it skips the project references.
