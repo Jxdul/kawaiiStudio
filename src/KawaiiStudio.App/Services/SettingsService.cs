@@ -13,6 +13,7 @@ public sealed class SettingsService
 
     private readonly string _settingsPath;
     private readonly Dictionary<string, string> _values = new(StringComparer.OrdinalIgnoreCase);
+    private List<string> _rawLines = new();
 
     public SettingsService(AppPaths appPaths)
     {
@@ -50,8 +51,11 @@ public sealed class SettingsService
     public void Save()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath) ?? ".");
-        var lines = BuildOutputLines();
+        var lines = _rawLines.Count > 0
+            ? BuildOutputLinesPreservingComments()
+            : BuildOutputLines();
         File.WriteAllLines(_settingsPath, lines);
+        _rawLines = lines.ToList();
     }
 
     public void Reload()
@@ -213,7 +217,9 @@ public sealed class SettingsService
     private void LoadFromFile()
     {
         _values.Clear();
-        foreach (var line in File.ReadAllLines(_settingsPath))
+        var lines = File.ReadAllLines(_settingsPath);
+        _rawLines = new List<string>(lines);
+        foreach (var line in lines)
         {
             var trimmed = line.Trim();
             if (string.IsNullOrWhiteSpace(trimmed))
@@ -246,6 +252,7 @@ public sealed class SettingsService
     private void LoadDefaults()
     {
         _values.Clear();
+        _rawLines = new List<string>();
         _values["PRICE1_26"] = "10";
         _values["PRICE2_26"] = "20";
         _values["PRICE3_26"] = "30";
@@ -451,6 +458,73 @@ public sealed class SettingsService
         }
 
         return lines;
+    }
+
+    private IEnumerable<string> BuildOutputLinesPreservingComments()
+    {
+        var output = new List<string>();
+        var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var line in _rawLines)
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                output.Add(line);
+                continue;
+            }
+
+            if (trimmed.StartsWith("#", StringComparison.Ordinal)
+                || trimmed.StartsWith(";", StringComparison.Ordinal))
+            {
+                output.Add(line);
+                continue;
+            }
+
+            var separatorIndex = trimmed.IndexOf('=', StringComparison.Ordinal);
+            if (separatorIndex <= 0)
+            {
+                output.Add(line);
+                continue;
+            }
+
+            var key = trimmed[..separatorIndex].Trim();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                output.Add(line);
+                continue;
+            }
+
+            if (_values.TryGetValue(key, out var value))
+            {
+                output.Add($"{key}={value}");
+                seenKeys.Add(key);
+            }
+            else
+            {
+                output.Add(line);
+            }
+        }
+
+        var missing = _values.Keys
+            .Where(key => !seenKeys.Contains(key))
+            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (missing.Count > 0)
+        {
+            if (output.Count > 0 && !string.IsNullOrWhiteSpace(output[^1]))
+            {
+                output.Add(string.Empty);
+            }
+
+            foreach (var key in missing)
+            {
+                output.Add($"{key}={_values[key]}");
+            }
+        }
+
+        return output;
     }
 
     private string GetString(string key, string fallback)

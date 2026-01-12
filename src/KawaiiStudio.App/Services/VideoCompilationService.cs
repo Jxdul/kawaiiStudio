@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,16 +25,23 @@ public sealed class VideoCompilationService
         error = null;
 
         var previewFolder = session.PreviewFramesFolder;
-        if (string.IsNullOrWhiteSpace(previewFolder) || !Directory.Exists(previewFolder))
+        var previewFrames = Array.Empty<string>();
+        if (!string.IsNullOrWhiteSpace(previewFolder) && Directory.Exists(previewFolder))
         {
-            error = "preview_frames_missing";
-            return false;
+            previewFrames = Directory.GetFiles(previewFolder)
+                .Where(HasImageExtension)
+                .OrderBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
-        var frames = Directory.GetFiles(previewFolder, "preview_*.png");
+        var capturedFrames = session.CapturedPhotos
+            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            .ToArray();
+
+        var frames = ChooseFrames(previewFrames, capturedFrames);
         if (frames.Length == 0)
         {
-            error = "preview_frames_empty";
+            error = "video_frames_empty";
             return false;
         }
 
@@ -55,8 +63,12 @@ public sealed class VideoCompilationService
             return false;
         }
 
-        var inputPattern = Path.Combine(previewFolder, "preview_%04d.png");
-        var args = $"-nostdin -y -framerate {PreviewFrameRate} -start_number 1 -i \"{inputPattern}\" -c:v libx264 -pix_fmt yuv420p \"{outputPath}\"";
+        var listFolder = !string.IsNullOrWhiteSpace(previewFolder) && Directory.Exists(previewFolder)
+            ? previewFolder
+            : videosFolder;
+        var listPath = Path.Combine(listFolder, "preview_list.txt");
+        WriteConcatFile(listPath, frames, PreviewFrameRate);
+        var args = $"-nostdin -y -f concat -safe 0 -i \"{listPath}\" -vsync vfr -c:v libx264 -pix_fmt yuv420p \"{outputPath}\"";
 
         try
         {
@@ -64,7 +76,7 @@ public sealed class VideoCompilationService
             {
                 FileName = ffmpeg,
                 Arguments = args,
-                WorkingDirectory = previewFolder,
+                WorkingDirectory = listFolder,
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardError = true,
@@ -89,7 +101,7 @@ public sealed class VideoCompilationService
             if (process.ExitCode != 0)
             {
                 var stderr = errorTask.GetAwaiter().GetResult();
-                error = string.IsNullOrWhiteSpace(stderr) ? "ffmpeg_failed" : Truncate(stderr, 240);
+                error = string.IsNullOrWhiteSpace(stderr) ? "ffmpeg_failed" : TruncateTail(stderr, 240);
                 return false;
             }
 
@@ -99,6 +111,10 @@ public sealed class VideoCompilationService
         {
             error = Truncate(ex.Message, 240);
             return false;
+        }
+        finally
+        {
+            TryDelete(listPath);
         }
     }
 
@@ -125,7 +141,87 @@ public sealed class VideoCompilationService
             return candidates[0];
         }
 
+        var pathMatch = FindFfmpegOnPath();
+        if (!string.IsNullOrWhiteSpace(pathMatch))
+        {
+            return pathMatch;
+        }
+
+        return "ffmpeg.exe";
+    }
+
+    private static bool HasImageExtension(string path)
+    {
+        var extension = Path.GetExtension(path);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            return false;
+        }
+
+        return extension.Equals(".png", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void WriteConcatFile(string listPath, string[] frames, int frameRate)
+    {
+        var duration = frameRate > 0 ? (1.0 / frameRate) : 0.1;
+        var durationText = duration.ToString("0.######", CultureInfo.InvariantCulture);
+        var lines = new List<string>(frames.Length * 2 + 1);
+        foreach (var frame in frames)
+        {
+            var normalized = frame.Replace('\\', '/');
+            lines.Add($"file '{normalized}'");
+            lines.Add($"duration {durationText}");
+        }
+
+        if (frames.Length > 0)
+        {
+            var last = frames[^1].Replace('\\', '/');
+            lines.Add($"file '{last}'");
+        }
+
+        File.WriteAllLines(listPath, lines);
+    }
+
+    private static string? FindFfmpegOnPath()
+    {
+        var path = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        foreach (var dir in path.Split(Path.PathSeparator))
+        {
+            if (string.IsNullOrWhiteSpace(dir))
+            {
+                continue;
+            }
+
+            var candidate = Path.Combine(dir.Trim(), "ffmpeg.exe");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
         return null;
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors.
+        }
     }
 
     private static void TryTerminate(Process process)
@@ -152,5 +248,36 @@ public sealed class VideoCompilationService
 
         var trimmed = value.Trim();
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static string TruncateTail(string value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "unknown_error";
+        }
+
+        var trimmed = value.Trim();
+        if (trimmed.Length <= maxLength)
+        {
+            return trimmed;
+        }
+
+        return trimmed[^maxLength..];
+    }
+
+    private static string[] ChooseFrames(string[] previewFrames, string[] capturedFrames)
+    {
+        if (previewFrames.Length > 0 && previewFrames.Length >= capturedFrames.Length)
+        {
+            return previewFrames;
+        }
+
+        if (capturedFrames.Length > 0)
+        {
+            return capturedFrames;
+        }
+
+        return Array.Empty<string>();
     }
 }

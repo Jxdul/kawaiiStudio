@@ -7,6 +7,7 @@ namespace KawaiiStudio.App.ViewModels;
 
 public sealed class FinalizeViewModel : ScreenViewModelBase
 {
+    private const int ExpectedShotCount = 8;
     private readonly NavigationService _navigation;
     private readonly SessionService _session;
     private readonly FrameCompositionService _composer;
@@ -57,39 +58,50 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         _canContinue = false;
         _continueCommand.RaiseCanExecuteChanged();
 
-        var outputPath = BuildOutputPath();
-        if (string.IsNullOrWhiteSpace(outputPath))
+        var outputPaths = BuildOutputPaths();
+        if (outputPaths is null)
         {
             StatusText = "Session output folder missing.";
             KawaiiStudio.App.App.Log("FINALIZE_COMPOSITE_FAILED reason=missing_session_folder");
             return;
         }
 
-        if (_composer.TrySavePrintComposite(_session.Current, outputPath, out var error))
+        var (withQrPath, withoutQrPath) = outputPaths.Value;
+        if (_composer.TrySavePrintComposite(_session.Current, withQrPath, out var error))
         {
-            _session.SetFinalImagePath(outputPath);
-            StatusText = "Composite ready. Rendering video...";
-            var videoResult = await Task.Run(() =>
-                _videoCompiler.TryBuildPreviewVideo(_session.Current, out var videoPath, out var videoError)
-                    ? (success: true, path: videoPath, error: (string?)null)
-                    : (success: false, path: (string?)null, error: videoError));
+            _session.SetFinalImagePath(withQrPath);
+            _ = _composer.TrySavePrintComposite(_session.Current, withoutQrPath, includeQr: false, out _);
 
-            if (videoResult.success && !string.IsNullOrWhiteSpace(videoResult.path))
+            if (!CanBuildVideo(out var skipReason))
             {
-                _session.SetVideoPath(videoResult.path);
-                StatusText = "Composite and video ready.";
-                KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_OK file={Path.GetFileName(videoResult.path)}");
+                StatusText = "Composite ready. Video skipped.";
+                KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_SKIPPED reason={skipReason}");
             }
             else
             {
-                StatusText = "Composite ready. Video failed.";
-                var reason = string.IsNullOrWhiteSpace(videoResult.error) ? "unknown" : videoResult.error;
-                KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_FAILED reason={reason}");
+                StatusText = "Composite ready. Rendering video...";
+                var videoResult = await Task.Run(() =>
+                    _videoCompiler.TryBuildPreviewVideo(_session.Current, out var videoPath, out var videoError)
+                        ? (success: true, path: videoPath, error: (string?)null)
+                        : (success: false, path: (string?)null, error: videoError));
+
+                if (videoResult.success && !string.IsNullOrWhiteSpace(videoResult.path))
+                {
+                    _session.SetVideoPath(videoResult.path);
+                    StatusText = "Composite and video ready.";
+                    KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_OK file={Path.GetFileName(videoResult.path)}");
+                }
+                else
+                {
+                    StatusText = "Composite ready. Video failed.";
+                    var reason = string.IsNullOrWhiteSpace(videoResult.error) ? "unknown" : videoResult.error;
+                    KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_FAILED reason={reason}");
+                }
             }
 
             _canContinue = true;
             _continueCommand.RaiseCanExecuteChanged();
-            KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_OK file={Path.GetFileName(outputPath)}");
+            KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_OK file={Path.GetFileName(withQrPath)}");
             return;
         }
 
@@ -97,7 +109,7 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_FAILED reason={error}");
     }
 
-    private string? BuildOutputPath()
+    private (string withQr, string withoutQr)? BuildOutputPaths()
     {
         var sessionFolder = _session.Current.SessionFolder;
         if (string.IsNullOrWhiteSpace(sessionFolder))
@@ -105,10 +117,30 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
             return null;
         }
 
-        var sessionId = string.IsNullOrWhiteSpace(_session.Current.SessionId)
-            ? "session"
-            : _session.Current.SessionId;
-        var fileName = $"{sessionId}_final.png";
-        return Path.Combine(sessionFolder, fileName);
+        var sessionId = string.IsNullOrWhiteSpace(_session.Current.SessionId) ? "session" : _session.Current.SessionId;
+        var finalFolder = Path.Combine(sessionFolder, "Final");
+        var withQr = Path.Combine(finalFolder, $"{sessionId}_final_qr.png");
+        var withoutQr = Path.Combine(finalFolder, $"{sessionId}_final.png");
+        return (withQr, withoutQr);
+    }
+
+    private bool CanBuildVideo(out string reason)
+    {
+        var capturedCount = _session.Current.CapturedPhotos.Count;
+        if (capturedCount < ExpectedShotCount)
+        {
+            reason = $"captures_incomplete count={capturedCount}";
+            return false;
+        }
+
+        var slotCount = _session.Current.SlotCount ?? 0;
+        if (slotCount > 0 && _session.Current.SelectedMapping.Count < slotCount)
+        {
+            reason = "selection_incomplete";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
     }
 }

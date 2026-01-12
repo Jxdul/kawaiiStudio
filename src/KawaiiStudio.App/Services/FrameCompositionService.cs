@@ -28,6 +28,11 @@ public sealed class FrameCompositionService
 
     public BitmapSource? RenderComposite(SessionState session, out string? error)
     {
+        return RenderComposite(session, includeQr: true, out error);
+    }
+
+    public BitmapSource? RenderComposite(SessionState session, bool includeQr, out string? error)
+    {
         error = null;
         if (session is null)
         {
@@ -87,7 +92,10 @@ public sealed class FrameCompositionService
             }
 
             DrawFrameOverlay(context, session, width, height);
-            DrawQrOverlay(context, session, qrSlot);
+            if (includeQr)
+            {
+                DrawQrOverlay(context, session, qrSlot);
+            }
         }
 
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
@@ -98,8 +106,13 @@ public sealed class FrameCompositionService
 
     public BitmapSource? RenderPrintComposite(SessionState session, out string? error)
     {
+        return RenderPrintComposite(session, includeQr: true, out error);
+    }
+
+    public BitmapSource? RenderPrintComposite(SessionState session, bool includeQr, out string? error)
+    {
         error = null;
-        var composite = RenderComposite(session, out error);
+        var composite = RenderComposite(session, includeQr, out error);
         if (composite is null)
         {
             return null;
@@ -116,6 +129,11 @@ public sealed class FrameCompositionService
 
     public bool TrySavePrintComposite(SessionState session, string outputPath, out string? error)
     {
+        return TrySavePrintComposite(session, outputPath, includeQr: true, out error);
+    }
+
+    public bool TrySavePrintComposite(SessionState session, string outputPath, bool includeQr, out string? error)
+    {
         error = null;
         if (string.IsNullOrWhiteSpace(outputPath))
         {
@@ -123,7 +141,7 @@ public sealed class FrameCompositionService
             return false;
         }
 
-        var image = RenderPrintComposite(session, out error);
+        var image = RenderPrintComposite(session, includeQr, out error);
         if (image is null)
         {
             return false;
