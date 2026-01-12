@@ -364,7 +364,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private void UpdateCardTestMode()
     {
-        IsCardTestMode = _settings.TestMode && _cardPayment is IStripeTerminalTestProvider;
+        IsCardTestMode = _cardPayment is IStripeTerminalTestProvider;
     }
 
     private bool CanSimulateTerminalTest()
