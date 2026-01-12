@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -24,6 +25,14 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private readonly RelayCommand _approveCardPaymentCommand;
     private readonly RelayCommand _declineCardPaymentCommand;
     private readonly RelayCommand _simulateVisaCommand;
+    private readonly RelayCommand _simulateVisaDebitCommand;
+    private readonly RelayCommand _simulateMastercardCommand;
+    private readonly RelayCommand _simulateAmexCommand;
+    private readonly RelayCommand _simulateDiscoverCommand;
+    private readonly RelayCommand _simulateJcbCommand;
+    private readonly RelayCommand _simulateUnionPayCommand;
+    private readonly RelayCommand _simulateInteracCommand;
+    private readonly RelayCommand<CardTestOption> _simulateCardOptionCommand;
     private readonly RelayCommand _simulateDeclinedCommand;
     private readonly RelayCommand _simulateInsufficientFundsCommand;
     private readonly RelayCommand _simulateLostCardCommand;
@@ -69,6 +78,14 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _approveCardPaymentCommand = new RelayCommand(ApproveCardPayment, CanResolveCardPayment);
         _declineCardPaymentCommand = new RelayCommand(DeclineCardPayment, CanResolveCardPayment);
         _simulateVisaCommand = new RelayCommand(() => SimulateTerminalTest("4242424242424242", "Visa"), CanSimulateTerminalTest);
+        _simulateVisaDebitCommand = new RelayCommand(() => SimulateTerminalTest("4000056655665556", "Visa Debit"), CanSimulateTerminalTest);
+        _simulateMastercardCommand = new RelayCommand(() => SimulateTerminalTest("5555555555554444", "Mastercard"), CanSimulateTerminalTest);
+        _simulateAmexCommand = new RelayCommand(() => SimulateTerminalTest("378282246310005", "Amex"), CanSimulateTerminalTest);
+        _simulateDiscoverCommand = new RelayCommand(() => SimulateTerminalTest("6011111111111117", "Discover"), CanSimulateTerminalTest);
+        _simulateJcbCommand = new RelayCommand(() => SimulateTerminalTest("3566002020360505", "JCB"), CanSimulateTerminalTest);
+        _simulateUnionPayCommand = new RelayCommand(() => SimulateTerminalTest("6200000000000005", "UnionPay"), CanSimulateTerminalTest);
+        _simulateInteracCommand = new RelayCommand(() => SimulateTerminalTest("4506445006931933", "Interac"), CanSimulateTerminalTest);
+        _simulateCardOptionCommand = new RelayCommand<CardTestOption>(SimulateCardOption, CanSimulateCardOption);
         _simulateDeclinedCommand = new RelayCommand(() => SimulateTerminalTest("4000000000000002", "Decline"), CanSimulateTerminalTest);
         _simulateInsufficientFundsCommand = new RelayCommand(() => SimulateTerminalTest("4000000000009995", "Insufficient Funds"), CanSimulateTerminalTest);
         _simulateLostCardCommand = new RelayCommand(() => SimulateTerminalTest("4000000000009987", "Lost Card"), CanSimulateTerminalTest);
@@ -79,6 +96,14 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         ApproveCardPaymentCommand = _approveCardPaymentCommand;
         DeclineCardPaymentCommand = _declineCardPaymentCommand;
         SimulateVisaCommand = _simulateVisaCommand;
+        SimulateVisaDebitCommand = _simulateVisaDebitCommand;
+        SimulateMastercardCommand = _simulateMastercardCommand;
+        SimulateAmexCommand = _simulateAmexCommand;
+        SimulateDiscoverCommand = _simulateDiscoverCommand;
+        SimulateJcbCommand = _simulateJcbCommand;
+        SimulateUnionPayCommand = _simulateUnionPayCommand;
+        SimulateInteracCommand = _simulateInteracCommand;
+        SimulateCardOptionCommand = _simulateCardOptionCommand;
         SimulateDeclinedCommand = _simulateDeclinedCommand;
         SimulateInsufficientFundsCommand = _simulateInsufficientFundsCommand;
         SimulateLostCardCommand = _simulateLostCardCommand;
@@ -88,6 +113,11 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _backCommand = new RelayCommand(() => _navigation.Navigate("frame"), () => !_session.Current.IsPaid);
         BackCommand = _backCommand;
         CancelCommand = new RelayCommand(Cancel, () => !_session.Current.IsPaid);
+
+        CardTestOptions = BuildCardTestOptions();
+        StandardCardTests = CardTestOptions.Where(option => option.Category == "Standard").ToList();
+        SuccessCardTests = CardTestOptions.Where(option => option.Category == "Success").ToList();
+        ErrorCardTests = CardTestOptions.Where(option => option.Category == "Error").ToList();
 
         _cashAcceptor.BillAccepted += HandleBillAccepted;
         _cashAcceptor.BillRejected += HandleBillRejected;
@@ -104,6 +134,14 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     public ICommand ApproveCardPaymentCommand { get; }
     public ICommand DeclineCardPaymentCommand { get; }
     public ICommand SimulateVisaCommand { get; }
+    public ICommand SimulateVisaDebitCommand { get; }
+    public ICommand SimulateMastercardCommand { get; }
+    public ICommand SimulateAmexCommand { get; }
+    public ICommand SimulateDiscoverCommand { get; }
+    public ICommand SimulateJcbCommand { get; }
+    public ICommand SimulateUnionPayCommand { get; }
+    public ICommand SimulateInteracCommand { get; }
+    public ICommand SimulateCardOptionCommand { get; }
     public ICommand SimulateDeclinedCommand { get; }
     public ICommand SimulateInsufficientFundsCommand { get; }
     public ICommand SimulateLostCardCommand { get; }
@@ -372,6 +410,21 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         return !_session.Current.IsPaid && IsCardActive && IsCardPaymentInProgress && IsCardTestMode;
     }
 
+    private bool CanSimulateCardOption(CardTestOption option)
+    {
+        return option is not null && CanSimulateTerminalTest();
+    }
+
+    private void SimulateCardOption(CardTestOption option)
+    {
+        if (option is null)
+        {
+            return;
+        }
+
+        SimulateTerminalTest(option.CardNumber, option.Label);
+    }
+
     private async void SimulateTerminalTest(string cardNumber, string label)
     {
         if (!CanSimulateTerminalTest() || _cardPayment is not IStripeTerminalTestProvider testProvider)
@@ -509,6 +562,14 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _approveCardPaymentCommand.RaiseCanExecuteChanged();
         _declineCardPaymentCommand.RaiseCanExecuteChanged();
         _simulateVisaCommand.RaiseCanExecuteChanged();
+        _simulateVisaDebitCommand.RaiseCanExecuteChanged();
+        _simulateMastercardCommand.RaiseCanExecuteChanged();
+        _simulateAmexCommand.RaiseCanExecuteChanged();
+        _simulateDiscoverCommand.RaiseCanExecuteChanged();
+        _simulateJcbCommand.RaiseCanExecuteChanged();
+        _simulateUnionPayCommand.RaiseCanExecuteChanged();
+        _simulateInteracCommand.RaiseCanExecuteChanged();
+        _simulateCardOptionCommand.RaiseCanExecuteChanged();
         _simulateDeclinedCommand.RaiseCanExecuteChanged();
         _simulateInsufficientFundsCommand.RaiseCanExecuteChanged();
         _simulateLostCardCommand.RaiseCanExecuteChanged();
@@ -595,5 +656,62 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         }
 
         UpdateCardTestMode();
+    }
+
+    public IReadOnlyList<CardTestOption> CardTestOptions { get; }
+    public IReadOnlyList<CardTestOption> StandardCardTests { get; }
+    public IReadOnlyList<CardTestOption> SuccessCardTests { get; }
+    public IReadOnlyList<CardTestOption> ErrorCardTests { get; }
+
+    private static IReadOnlyList<CardTestOption> BuildCardTestOptions()
+    {
+        return new List<CardTestOption>
+        {
+            new("Standard", "Visa 4242", "4242424242424242"),
+            new("Standard", "Visa debit 5556", "4000056655665556"),
+            new("Standard", "Mastercard 4444", "5555555555554444"),
+            new("Standard", "Mastercard debit 8210", "5200828282828210"),
+            new("Standard", "Mastercard prepaid 5100", "5105105105105100"),
+            new("Standard", "Amex 0005", "378282246310005"),
+            new("Standard", "Amex 8431", "371449635398431"),
+            new("Standard", "Discover 1117", "6011111111111117"),
+            new("Standard", "Discover 9424", "6011000990139424"),
+            new("Standard", "Diners 0004", "3056930009020004"),
+            new("Standard", "Diners (14) 1667", "36227206271667"),
+            new("Standard", "JCB 0505", "3566002020360505"),
+            new("Standard", "UnionPay 0005", "6200000000000005"),
+            new("Standard", "Interac 1933", "4506445006931933"),
+            new("Standard", "EFTPOS AU debit 0978", "6280000360000978"),
+            new("Standard", "EFTPOS AU Visa debit 0001", "4000050360000001"),
+            new("Standard", "EFTPOS AU MC debit 0080", "5555050360000080"),
+            new("Standard", "Cartes Bancaires Visa 1001", "4000002500001001"),
+            new("Standard", "Cartes Bancaires MC 1001", "5555552500001001"),
+            new("Standard", "Girocard 6877", "4711009900000316877"),
+            new("Success", "Offline PIN", "4001007020000002"),
+            new("Success", "Offline PIN SCA retry", "4000008260000075"),
+            new("Success", "Online PIN", "4001000360000005"),
+            new("Success", "Online PIN SCA retry", "4000002760000008"),
+            new("Error", "Declined", "4000000000000002"),
+            new("Error", "Insufficient funds", "4000000000009995"),
+            new("Error", "Lost card", "4000000000009987"),
+            new("Error", "Stolen card", "4000000000009979"),
+            new("Error", "Expired card", "4000000000000069"),
+            new("Error", "Processing error", "4000000000000119"),
+            new("Error", "Refund fail (JS only)", "4000000000005126")
+        };
+    }
+
+    public sealed class CardTestOption
+    {
+        public CardTestOption(string category, string label, string cardNumber)
+        {
+            Category = category;
+            Label = label;
+            CardNumber = cardNumber;
+        }
+
+        public string Category { get; }
+        public string Label { get; }
+        public string CardNumber { get; }
     }
 }
