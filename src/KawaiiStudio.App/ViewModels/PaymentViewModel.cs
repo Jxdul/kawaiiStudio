@@ -13,30 +13,38 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private readonly SessionService _session;
     private readonly SettingsService _settings;
     private readonly ICashAcceptorProvider _cashAcceptor;
+    private readonly ICardPaymentProvider _cardPayment;
     private readonly RelayCommand _insertFiveCommand;
     private readonly RelayCommand _insertTenCommand;
     private readonly RelayCommand _insertTwentyCommand;
     private readonly RelayCommand _selectCardCommand;
     private readonly RelayCommand _selectCashCommand;
+    private readonly RelayCommand _startCardPaymentCommand;
+    private readonly RelayCommand _approveCardPaymentCommand;
+    private readonly RelayCommand _declineCardPaymentCommand;
     private readonly RelayCommand _backCommand;
     private string _summaryText = string.Empty;
     private string _tokenStatusText = string.Empty;
     private string _totalPriceText = string.Empty;
+    private string _cardStatusText = "Card reader ready.";
     private int _tokensRequired;
     private bool _isCashActive = true;
+    private bool _isCardPaymentInProgress;
 
     public PaymentViewModel(
         NavigationService navigation,
         SessionService session,
         ThemeCatalogService themeCatalog,
         SettingsService settings,
-        ICashAcceptorProvider cashAcceptor)
+        ICashAcceptorProvider cashAcceptor,
+        ICardPaymentProvider cardPayment)
         : base(themeCatalog, "payment")
     {
         _navigation = navigation;
         _session = session;
         _settings = settings;
         _cashAcceptor = cashAcceptor;
+        _cardPayment = cardPayment;
 
         _insertFiveCommand = new RelayCommand(() => InsertBill(5), CanInsertBill);
         _insertTenCommand = new RelayCommand(() => InsertBill(10), CanInsertBill);
@@ -48,12 +56,20 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _selectCashCommand = new RelayCommand(SelectCash, CanSelectCash);
         SelectCardCommand = _selectCardCommand;
         SelectCashCommand = _selectCashCommand;
+        _startCardPaymentCommand = new RelayCommand(StartCardPayment, CanStartCardPayment);
+        _approveCardPaymentCommand = new RelayCommand(ApproveCardPayment, CanResolveCardPayment);
+        _declineCardPaymentCommand = new RelayCommand(DeclineCardPayment, CanResolveCardPayment);
+        StartCardPaymentCommand = _startCardPaymentCommand;
+        ApproveCardPaymentCommand = _approveCardPaymentCommand;
+        DeclineCardPaymentCommand = _declineCardPaymentCommand;
         _backCommand = new RelayCommand(() => _navigation.Navigate("frame"), () => !_session.Current.IsPaid);
         BackCommand = _backCommand;
         CancelCommand = new RelayCommand(Cancel, () => !_session.Current.IsPaid);
 
         _cashAcceptor.BillAccepted += HandleBillAccepted;
         _cashAcceptor.BillRejected += HandleBillRejected;
+        _cardPayment.PaymentApproved += HandleCardApproved;
+        _cardPayment.PaymentDeclined += HandleCardDeclined;
     }
 
     public ICommand InsertFiveCommand { get; }
@@ -61,6 +77,9 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     public ICommand InsertTwentyCommand { get; }
     public ICommand SelectCardCommand { get; }
     public ICommand SelectCashCommand { get; }
+    public ICommand StartCardPaymentCommand { get; }
+    public ICommand ApproveCardPaymentCommand { get; }
+    public ICommand DeclineCardPaymentCommand { get; }
     public ICommand BackCommand { get; }
     public ICommand CancelCommand { get; }
 
@@ -99,6 +118,32 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         IsCashActive
             ? "Insert cash now or select card payment."
             : "Card payment selected. Follow the card reader instructions.";
+
+    public string CardStatusText
+    {
+        get => _cardStatusText;
+        private set
+        {
+            _cardStatusText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsCardPaymentInProgress
+    {
+        get => _isCardPaymentInProgress;
+        private set
+        {
+            if (_isCardPaymentInProgress == value)
+            {
+                return;
+            }
+
+            _isCardPaymentInProgress = value;
+            OnPropertyChanged();
+            UpdateInsertCommandState();
+        }
+    }
 
     public string TokenStatusText
     {
@@ -156,6 +201,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             : $"Inserted: {FormatCurrency(tokensInserted)} / {FormatCurrency(total)}";
 
         TotalPriceText = $"Total due: {FormatCurrency(total)}";
+        _cashAcceptor.UpdateRemainingAmount(GetRemainingDue());
     }
 
     private decimal CalculateTotalPrice()
@@ -179,7 +225,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private bool CanInsertBill()
     {
-        return !_session.Current.IsPaid && _tokensRequired > 0 && IsCashActive;
+        return !_session.Current.IsPaid && _tokensRequired > 0 && IsCashActive && _settings.TestMode;
     }
 
     private bool CanSelectCard()
@@ -200,6 +246,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         }
 
         SetPaymentMode(false);
+        StartCardPayment();
     }
 
     private void SelectCash()
@@ -210,6 +257,85 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         }
 
         SetPaymentMode(true);
+    }
+
+    private bool CanStartCardPayment()
+    {
+        return !_session.Current.IsPaid && IsCardActive && !IsCardPaymentInProgress && GetRemainingDue() > 0m;
+    }
+
+    private bool CanResolveCardPayment()
+    {
+        return !_session.Current.IsPaid && IsCardActive && IsCardPaymentInProgress;
+    }
+
+    private void StartCardPayment()
+    {
+        if (_session.Current.IsPaid || !IsCardActive)
+        {
+            return;
+        }
+
+        var amount = GetRemainingDue();
+        if (amount <= 0m)
+        {
+            CardStatusText = "No balance due.";
+            return;
+        }
+
+        CardStatusText = "Waiting for card...";
+        IsCardPaymentInProgress = true;
+        _ = StartCardPaymentAsync(amount);
+        KawaiiStudio.App.App.Log($"CARD_PAYMENT_STARTED amount={amount:0.00}");
+    }
+
+    private void ApproveCardPayment()
+    {
+        _cardPayment.SimulateApprove();
+    }
+
+    private void DeclineCardPayment()
+    {
+        _cardPayment.SimulateDecline("declined");
+    }
+
+    private void HandleCardApproved(object? sender, CardPaymentEventArgs e)
+    {
+        IsCardPaymentInProgress = false;
+        CardStatusText = "Card approved.";
+        KawaiiStudio.App.App.Log($"CARD_PAYMENT_APPROVED amount={e.Amount:0.00}");
+        MarkPaid();
+    }
+
+    private void HandleCardDeclined(object? sender, CardPaymentEventArgs e)
+    {
+        IsCardPaymentInProgress = false;
+        var reason = string.IsNullOrWhiteSpace(e.Message) ? "declined" : e.Message;
+        CardStatusText = "Card declined. Try again or use cash.";
+        KawaiiStudio.App.App.Log($"CARD_PAYMENT_DECLINED amount={e.Amount:0.00} reason={reason}");
+    }
+
+    private async System.Threading.Tasks.Task StartCardPaymentAsync(decimal amount)
+    {
+        if (!_cardPayment.IsConnected)
+        {
+            var connected = await _cardPayment.ConnectAsync(CancellationToken.None);
+            if (!connected)
+            {
+                CardStatusText = "Card reader unavailable.";
+                IsCardPaymentInProgress = false;
+                KawaiiStudio.App.App.Log($"CARD_PAYMENT_FAILED amount={amount:0.00} reason=connect_failed");
+                return;
+            }
+        }
+
+        var started = await _cardPayment.StartPaymentAsync(amount, CancellationToken.None);
+        if (!started && IsCardActive)
+        {
+            CardStatusText = "Card reader unavailable.";
+            IsCardPaymentInProgress = false;
+            KawaiiStudio.App.App.Log($"CARD_PAYMENT_FAILED amount={amount:0.00}");
+        }
     }
 
     private void InsertBill(int amount)
@@ -256,6 +382,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private void MarkPaid()
     {
         _session.Current.MarkPaid();
+        _cashAcceptor.UpdateRemainingAmount(0m);
         OnPropertyChanged(nameof(IsPaid));
         UpdateInsertCommandState();
         _backCommand.RaiseCanExecuteChanged();
@@ -271,6 +398,8 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         }
 
         KawaiiStudio.App.App.Log("PAYMENT_CANCELED");
+        _ = _cardPayment.CancelAsync(CancellationToken.None);
+        IsCardPaymentInProgress = false;
         _navigation.Navigate("home");
     }
 
@@ -281,6 +410,9 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _insertTwentyCommand.RaiseCanExecuteChanged();
         _selectCardCommand.RaiseCanExecuteChanged();
         _selectCashCommand.RaiseCanExecuteChanged();
+        _startCardPaymentCommand.RaiseCanExecuteChanged();
+        _approveCardPaymentCommand.RaiseCanExecuteChanged();
+        _declineCardPaymentCommand.RaiseCanExecuteChanged();
     }
 
     private decimal GetRemainingDue()
@@ -339,6 +471,11 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         if (useCash)
         {
             _ = _cashAcceptor.ConnectAsync(CancellationToken.None);
+            _cashAcceptor.UpdateRemainingAmount(GetRemainingDue());
+            _ = _cardPayment.CancelAsync(CancellationToken.None);
+            _ = _cardPayment.DisconnectAsync(CancellationToken.None);
+            IsCardPaymentInProgress = false;
+            CardStatusText = "Card reader ready.";
             if (modeChanged)
             {
                 KawaiiStudio.App.App.Log("PAYMENT_MODE cash");
@@ -347,6 +484,8 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         else
         {
             _ = _cashAcceptor.DisconnectAsync(CancellationToken.None);
+            _ = _cardPayment.ConnectAsync(CancellationToken.None);
+            CardStatusText = "Card reader ready.";
             if (modeChanged)
             {
                 KawaiiStudio.App.App.Log("PAYMENT_MODE card");

@@ -29,6 +29,7 @@ public partial class App : Application
         var frameOverrides = new FrameOverrideService();
         var themeCatalog = new ThemeCatalogService(appPaths.ThemeRoot);
         var session = new SessionService(appPaths);
+        var videoCompiler = new VideoCompilationService(appPaths);
         session.PruneOldLogs(7);
         var settings = new SettingsService(appPaths);
         _settings = settings;
@@ -36,7 +37,9 @@ public partial class App : Application
         Session = session;
         var cameraProvider = CreateCameraProvider(settings);
         var cameraService = new CameraService(cameraProvider);
-        var cashAcceptor = new SimulatedCashAcceptorProvider();
+        var cashProvider = CreateCashAcceptorProvider(settings);
+        var cashAcceptor = new CashAcceptorService(cashProvider);
+        var cardPayment = new SimulatedCardPaymentProvider();
         var qrCodes = new QrCodeService();
         var frameComposer = new FrameCompositionService(templateCatalog, qrCodes, frameOverrides);
 
@@ -48,17 +51,17 @@ public partial class App : Application
         Navigation = navigation;
         navigation.Navigated += _ => ResetInactivityTimer();
         var errorViewModel = new ErrorViewModel();
-        var startupViewModel = new StartupViewModel(navigation, settings, cameraService, errorViewModel, themeCatalog);
+        var startupViewModel = new StartupViewModel(navigation, settings, cameraService, cashAcceptor, errorViewModel, themeCatalog);
         var homeViewModel = new HomeViewModel(navigation, session, themeCatalog);
         var sizeViewModel = new SizeViewModel(navigation, session, themeCatalog);
         var quantityViewModel = new QuantityViewModel(navigation, session, themeCatalog, settings);
         var layoutViewModel = new LayoutViewModel(navigation, session, themeCatalog);
         var categoryViewModel = new CategoryViewModel(navigation, session, frameCatalog, themeCatalog);
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
-        var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, cashAcceptor);
+        var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, cashAcceptor, cardPayment);
         var captureViewModel = new CaptureViewModel(navigation, session, cameraService, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);
-        var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, themeCatalog);
+        var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, videoCompiler, themeCatalog);
         var printingViewModel = new PrintingViewModel(navigation, session, themeCatalog);
         var thankYouViewModel = new ThankYouViewModel(navigation, session, themeCatalog);
         var libraryViewModel = new LibraryViewModel(navigation, frameCatalog, themeCatalog, appPaths);
@@ -101,6 +104,18 @@ public partial class App : Application
 
         Log("CAMERA_PROVIDER=simulated");
         return new SimulatedCameraProvider();
+    }
+
+    private static ICashAcceptorProvider CreateCashAcceptorProvider(SettingsService settings)
+    {
+        if (settings.TestMode)
+        {
+            Log("CASH_PROVIDER=simulated");
+            return new SimulatedCashAcceptorProvider();
+        }
+
+        Log($"CASH_PROVIDER=rs232 port={settings.CashCom}");
+        return new Rs232CashAcceptorProvider(settings.CashCom);
     }
 
     public static void Log(string message)

@@ -11,6 +11,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private readonly NavigationService _navigation;
     private readonly SettingsService _settings;
     private readonly CameraService _camera;
+    private readonly CashAcceptorService _cashAcceptor;
     private readonly ErrorViewModel _errorViewModel;
     private readonly RelayCommand _retryCommand;
     private readonly RelayCommand _continueCommand;
@@ -24,6 +25,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         NavigationService navigation,
         SettingsService settings,
         CameraService camera,
+        CashAcceptorService cashAcceptor,
         ErrorViewModel errorViewModel,
         ThemeCatalogService themeCatalog)
         : base(themeCatalog, "startup")
@@ -31,6 +33,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         _navigation = navigation;
         _settings = settings;
         _camera = camera;
+        _cashAcceptor = cashAcceptor;
         _errorViewModel = errorViewModel;
 
         _retryCommand = new RelayCommand(StartChecks, () => !_isChecking);
@@ -95,7 +98,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return;
         }
 
-        var cashOk = await CheckPlaceholderAsync(Checks[1], "Cash reader", testMode, token);
+        var cashOk = await CheckCashAsync(testMode, token);
         if (token.IsCancellationRequested)
         {
             return;
@@ -204,6 +207,52 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
 
         return false;
+    }
+
+    private async Task<bool> CheckCashAsync(bool testMode, CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        var item = Checks[1];
+        item.SetStatus("Connecting...", string.Empty, false);
+
+        _cashAcceptor.UseProvider(CreateCashProvider(testMode));
+        var connected = await _cashAcceptor.ConnectAsync(token);
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+        try
+        {
+            await _cashAcceptor.DisconnectAsync(token);
+        }
+        catch
+        {
+            // Ignore disconnect errors during startup checks.
+        }
+
+        if (connected)
+        {
+            var status = testMode ? "Simulated" : "Connected";
+            var detail = testMode ? "Test mode" : _settings.CashCom;
+            item.SetStatus(status, detail, true);
+            KawaiiStudio.App.App.Log(testMode ? "STARTUP_CASH_SIMULATED" : "STARTUP_CASH_OK");
+            return true;
+        }
+
+        item.SetStatus("Failed", "Cash reader not connected", false);
+        KawaiiStudio.App.App.Log("STARTUP_CASH_FAILED");
+        return false;
+    }
+
+    private ICashAcceptorProvider CreateCashProvider(bool testMode)
+    {
+        return testMode
+            ? new SimulatedCashAcceptorProvider()
+            : new Rs232CashAcceptorProvider(_settings.CashCom);
     }
 
     private static Task<bool> CheckPlaceholderAsync(

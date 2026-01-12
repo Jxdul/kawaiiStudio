@@ -8,6 +8,8 @@ namespace KawaiiStudio.App.Services;
 public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
 {
     private static readonly HashSet<int> AllowedBills = new() { 5, 10, 20 };
+    private decimal _remainingAmount;
+    private bool _hasRemainingAmount;
 
     public bool IsConnected { get; private set; }
 
@@ -34,6 +36,13 @@ public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
             return;
         }
 
+        if (_hasRemainingAmount && (amount <= 0 || amount > _remainingAmount))
+        {
+            var reason = amount <= 0 ? "invalid_amount" : "overpayment";
+            BillRejected?.Invoke(this, new CashAcceptorEventArgs(amount, reason));
+            return;
+        }
+
         if (AllowedBills.Contains(amount))
         {
             BillAccepted?.Invoke(this, new CashAcceptorEventArgs(amount));
@@ -41,5 +50,11 @@ public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
         }
 
         BillRejected?.Invoke(this, new CashAcceptorEventArgs(amount, "unsupported_denomination"));
+    }
+
+    public void UpdateRemainingAmount(decimal amount)
+    {
+        _remainingAmount = amount;
+        _hasRemainingAmount = true;
     }
 }

@@ -43,24 +43,40 @@
         </StackPanel>
       </Grid>
 
-      <Border Grid.Row="2" Background="#1A1A1A" CornerRadius="10" Padding="16" Margin="0,16,0,0">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
+      <Grid Grid.Row="2" Margin="0,16,0,0">
+        <Border Background="#1A1A1A" CornerRadius="10" Padding="16"
+                Visibility="{Binding IsCashActive, Converter={StaticResource BoolToVisibility}}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Text="Cash" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding TokenStatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,8,0,0" />
+              <TextBlock Text="{Binding TotalPriceText}" FontSize="12" Foreground="#8A8A8A" Margin="0,2,0,0" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+              <Button Content="$5" Command="{Binding InsertFiveCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
+              <Button Content="$10" Command="{Binding InsertTenCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
+              <Button Content="$20" Command="{Binding InsertTwentyCommand}" FontSize="16" Padding="14,8" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Background="#1A1A1A" CornerRadius="10" Padding="16"
+                Visibility="{Binding IsCardActive, Converter={StaticResource BoolToVisibility}}">
           <StackPanel>
-            <TextBlock Text="Cash" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding TokenStatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,8,0,0" />
-            <TextBlock Text="{Binding TotalPriceText}" FontSize="12" Foreground="#8A8A8A" Margin="0,2,0,0" />
+            <TextBlock Text="Card Payment" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding CardStatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,8,0,0" />
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button Content="Start" Command="{Binding StartCardPaymentCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
+              <Button Content="Approve" Command="{Binding ApproveCardPaymentCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
+              <Button Content="Decline" Command="{Binding DeclineCardPaymentCommand}" FontSize="16" Padding="14,8" />
+            </StackPanel>
           </StackPanel>
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-            <Button Content="$5" Command="{Binding InsertFiveCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
-            <Button Content="$10" Command="{Binding InsertTenCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
-            <Button Content="$20" Command="{Binding InsertTwentyCommand}" FontSize="16" Padding="14,8" />
-          </StackPanel>
-        </Grid>
-      </Border>
+        </Border>
+      </Grid>
     </Grid>
   </Grid>
 </UserControl>

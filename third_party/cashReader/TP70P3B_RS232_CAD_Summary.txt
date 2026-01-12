@@ -6,6 +6,7 @@ TP70P3B (DST/TOPVME TP70 Series) — RS232 Integration Notes (CAD $5/$10)
 - Device family: TOPVME / DST “TP Series” bill acceptor (TP70P3B variant)
 - Interfaces supported (model-dependent): Pulse + RS232 (and sometimes ccTalk depending on config)
 - Your current accepted bills: CAD $5 and CAD $10 only (confirmed by test)
+- Confirmed output/protocol mode: RS232 Protocol (not Pulse)
 
 2) Physical / wiring essentials
 -------------------------------
@@ -125,6 +126,7 @@ Recommended app behavior:
 
 7) DIP switches (what to remember)
 ----------------------------------
+- Confirmed device is set to RS232 protocol mode (so your software should use the byte protocol in section 4).
 - DIP meanings can vary by currency dataset and by output mode (Pulse vs RS232).
 - Multiple DIP banks may exist (side vs bottom).
 - Your behavior suggests only the first two bill types are enabled/accepted (fits $5/$10-only operation).

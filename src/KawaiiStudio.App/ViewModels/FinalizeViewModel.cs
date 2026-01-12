@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using KawaiiStudio.App.Services;
 
@@ -9,6 +10,7 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
     private readonly NavigationService _navigation;
     private readonly SessionService _session;
     private readonly FrameCompositionService _composer;
+    private readonly VideoCompilationService _videoCompiler;
     private readonly RelayCommand _continueCommand;
     private string _statusText = "Preparing output...";
     private bool _canContinue;
@@ -17,12 +19,14 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         NavigationService navigation,
         SessionService session,
         FrameCompositionService composer,
+        VideoCompilationService videoCompiler,
         ThemeCatalogService themeCatalog)
         : base(themeCatalog, "finalize")
     {
         _navigation = navigation;
         _session = session;
         _composer = composer;
+        _videoCompiler = videoCompiler;
         _continueCommand = new RelayCommand(() => _navigation.Navigate("printing"), () => _canContinue);
         ContinueCommand = _continueCommand;
         BackCommand = new RelayCommand(() => _navigation.Navigate("review"));
@@ -48,7 +52,7 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         RenderComposite();
     }
 
-    private void RenderComposite()
+    private async void RenderComposite()
     {
         _canContinue = false;
         _continueCommand.RaiseCanExecuteChanged();
@@ -64,7 +68,25 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         if (_composer.TrySavePrintComposite(_session.Current, outputPath, out var error))
         {
             _session.SetFinalImagePath(outputPath);
-            StatusText = "Composite ready for print.";
+            StatusText = "Composite ready. Rendering video...";
+            var videoResult = await Task.Run(() =>
+                _videoCompiler.TryBuildPreviewVideo(_session.Current, out var videoPath, out var videoError)
+                    ? (success: true, path: videoPath, error: (string?)null)
+                    : (success: false, path: (string?)null, error: videoError));
+
+            if (videoResult.success && !string.IsNullOrWhiteSpace(videoResult.path))
+            {
+                _session.SetVideoPath(videoResult.path);
+                StatusText = "Composite and video ready.";
+                KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_OK file={Path.GetFileName(videoResult.path)}");
+            }
+            else
+            {
+                StatusText = "Composite ready. Video failed.";
+                var reason = string.IsNullOrWhiteSpace(videoResult.error) ? "unknown" : videoResult.error;
+                KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_FAILED reason={reason}");
+            }
+
             _canContinue = true;
             _continueCommand.RaiseCanExecuteChanged();
             KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_OK file={Path.GetFileName(outputPath)}");

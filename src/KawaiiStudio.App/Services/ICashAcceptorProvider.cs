@@ -15,4 +15,5 @@ public interface ICashAcceptorProvider
     Task DisconnectAsync(CancellationToken cancellationToken);
 
     void SimulateBillInserted(int amount);
+    void UpdateRemainingAmount(decimal amount);
 }
