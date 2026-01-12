@@ -49,6 +49,7 @@ public partial class App : Application
         var cashProvider = CreateCashAcceptorProvider(settings);
         var cashAcceptor = new CashAcceptorService(cashProvider);
         var cardPayment = CreateCardPaymentProvider(settings);
+        var uploadService = new UploadService(settings);
         var qrCodes = new QrCodeService();
         var frameComposer = new FrameCompositionService(templateCatalog, qrCodes, frameOverrides);
         SetDeviceStatusFromProviders(cameraProvider, cashProvider, cardPayment);
@@ -71,7 +72,7 @@ public partial class App : Application
         var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, cashAcceptor, cardPayment);
         var captureViewModel = new CaptureViewModel(navigation, session, cameraService, settings, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);
-        var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, videoCompiler, themeCatalog);
+        var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, videoCompiler, uploadService, themeCatalog);
         var printingViewModel = new PrintingViewModel(navigation, session, themeCatalog);
         var thankYouViewModel = new ThankYouViewModel(navigation, session, themeCatalog);
         var libraryViewModel = new LibraryViewModel(navigation, frameCatalog, themeCatalog, appPaths);

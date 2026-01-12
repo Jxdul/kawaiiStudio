@@ -45,6 +45,8 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private string _totalPriceText = string.Empty;
     private string _cashDenominationsText = string.Empty;
     private string _cardStatusText = "Card reader ready.";
+    private string _cashErrorText = string.Empty;
+    private string? _lastCashRejectReason;
     private bool _isCashActive = true;
     private bool _isCardPaymentInProgress;
     private bool _isCardTestMode;
@@ -259,6 +261,24 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         }
     }
 
+    public string CashErrorText
+    {
+        get => _cashErrorText;
+        private set
+        {
+            if (_cashErrorText == value)
+            {
+                return;
+            }
+
+            _cashErrorText = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasCashError));
+        }
+    }
+
+    public bool HasCashError => !string.IsNullOrWhiteSpace(_cashErrorText);
+
     public override void OnNavigatedTo()
     {
         base.OnNavigatedTo();
@@ -280,6 +300,8 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         builder.AppendLine($"Total: {FormatCurrency(CalculateTotalPrice())}");
 
         SummaryText = builder.ToString().TrimEnd();
+        _lastCashRejectReason = null;
+        CashErrorText = string.Empty;
         UpdateCashStatus();
         UpdateCashDenominations();
         UpdateCardTestMode();
@@ -292,9 +314,20 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     {
         var total = CalculateTotalPrice();
         var cashInserted = _session.Current.CashInserted;
-        CashStatusText = total <= 0m
-            ? "Cash: pricing not set"
-            : $"Inserted: {FormatCurrency(cashInserted)} / {FormatCurrency(total)}";
+        if (total <= 0m)
+        {
+            CashStatusText = "Cash: pricing not set";
+        }
+        else
+        {
+            var status = $"Inserted: {FormatCurrency(cashInserted)} / {FormatCurrency(total)}";
+            if (!string.IsNullOrWhiteSpace(_lastCashRejectReason))
+            {
+                status += $" (last: {FormatCashReason(_lastCashRejectReason)})";
+            }
+
+            CashStatusText = status;
+        }
 
         TotalPriceText = $"Total due: {FormatCurrency(total)}";
         _cashAcceptor.UpdateRemainingAmount(GetRemainingDue());
@@ -484,6 +517,9 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     {
         if (_session.Current.IsPaid)
         {
+            _lastCashRejectReason = "already_paid";
+            CashErrorText = MapCashError(_lastCashRejectReason);
+            UpdateCashStatus();
             return;
         }
 
@@ -491,12 +527,18 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         if (remaining <= 0m)
         {
             KawaiiStudio.App.App.Log($"PAYMENT_BILL_REJECTED amount={amount} reason=already_paid");
+            _lastCashRejectReason = "already_paid";
+            CashErrorText = MapCashError(_lastCashRejectReason);
+            UpdateCashStatus();
             return;
         }
 
         if (amount > remaining)
         {
             KawaiiStudio.App.App.Log($"PAYMENT_BILL_REJECTED amount={amount} reason=overpayment remaining={remaining:0.00}");
+            _lastCashRejectReason = "overpayment";
+            CashErrorText = MapCashError(_lastCashRejectReason);
+            UpdateCashStatus();
             return;
         }
 
@@ -505,6 +547,8 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private void HandleBillAccepted(object? sender, CashAcceptorEventArgs e)
     {
+        _lastCashRejectReason = null;
+        CashErrorText = string.Empty;
         _session.Current.AddCash(e.Amount);
         UpdateCashStatus();
         KawaiiStudio.App.App.Log($"PAYMENT_BILL_ACCEPTED amount={e.Amount:0.00} total={_session.Current.CashInserted:0.00}");
@@ -525,6 +569,9 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     {
         var reason = string.IsNullOrWhiteSpace(e.Reason) ? "unknown" : e.Reason;
         KawaiiStudio.App.App.Log($"PAYMENT_BILL_REJECTED amount={e.Amount} reason={reason}");
+        _lastCashRejectReason = reason;
+        CashErrorText = MapCashError(reason);
+        UpdateCashStatus();
     }
 
     private void MarkPaid()
@@ -619,6 +666,38 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private static string FormatCurrency(decimal amount)
     {
         return $"${amount:0.00}";
+    }
+
+    private static string FormatCashReason(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return "unknown";
+        }
+
+        return reason.Replace('_', ' ');
+    }
+
+    private static string MapCashError(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return string.Empty;
+        }
+
+        if (reason.StartsWith("fault_0x", StringComparison.OrdinalIgnoreCase))
+        {
+            var code = reason.Replace("fault_", string.Empty, StringComparison.OrdinalIgnoreCase).ToUpperInvariant();
+            return $"Cash reader fault ({code}).";
+        }
+
+        return reason switch
+        {
+            "intake_disabled" => "Cash reader intake disabled.",
+            "not_connected" => "Cash reader not connected.",
+            "manual_insert_disabled" => "Cash reader disabled.",
+            _ => string.Empty
+        };
     }
 
     private void SetPaymentMode(bool useCash)

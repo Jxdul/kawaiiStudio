@@ -10,6 +10,7 @@ public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
     private readonly HashSet<int> _allowedBills;
     private decimal _remainingAmount;
     private bool _hasRemainingAmount;
+    private bool _acceptingEnabled;
 
     public SimulatedCashAcceptorProvider(IEnumerable<int>? allowedBills = null)
     {
@@ -41,6 +42,12 @@ public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
             return;
         }
 
+        if (!_acceptingEnabled)
+        {
+            BillRejected?.Invoke(this, new CashAcceptorEventArgs(amount, "intake_disabled"));
+            return;
+        }
+
         if (_hasRemainingAmount && (amount <= 0 || amount > _remainingAmount))
         {
             var reason = amount <= 0 ? "invalid_amount" : "overpayment";
@@ -61,6 +68,7 @@ public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
     {
         _remainingAmount = amount;
         _hasRemainingAmount = true;
+        _acceptingEnabled = _remainingAmount > 0m;
     }
 
     private static HashSet<int> NormalizeAllowedBills(IEnumerable<int>? allowedBills)

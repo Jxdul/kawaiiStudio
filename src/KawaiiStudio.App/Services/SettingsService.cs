@@ -32,6 +32,8 @@ public sealed class SettingsService
     public string StripeTerminalBaseUrl => GetString("STRIPE_TERMINAL_BASE_URL", "http://localhost:4242");
     public string StripeTerminalReaderId => GetString("STRIPE_TERMINAL_READER_ID", string.Empty);
     public string StripeTerminalLocationId => GetString("STRIPE_TERMINAL_LOCATION_ID", string.Empty);
+    public string UploadBaseUrl => GetString("UPLOAD_BASE_URL", string.Empty);
+    public bool UploadEnabled => GetBool("UPLOAD_ENABLED", false);
 
     public string GetValue(string key, string fallback = "")
     {
@@ -271,6 +273,8 @@ public sealed class SettingsService
         _values["STRIPE_TERMINAL_BASE_URL"] = "http://localhost:4242";
         _values["STRIPE_TERMINAL_READER_ID"] = string.Empty;
         _values["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty;
+        _values["UPLOAD_BASE_URL"] = string.Empty;
+        _values["UPLOAD_ENABLED"] = "false";
         _values["CAMERA_PROVIDER"] = "simulated";
         _values["TEST_MODE"] = "false";
         _values["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
@@ -320,6 +324,8 @@ public sealed class SettingsService
             ["STRIPE_TERMINAL_BASE_URL"] = "http://localhost:4242",
             ["STRIPE_TERMINAL_READER_ID"] = string.Empty,
             ["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty,
+            ["UPLOAD_BASE_URL"] = string.Empty,
+            ["UPLOAD_ENABLED"] = "false",
             ["CAMERA_PROVIDER"] = "simulated",
             ["TEST_MODE"] = "false",
             ["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture),
@@ -380,6 +386,8 @@ public sealed class SettingsService
                 "STRIPE_TERMINAL_BASE_URL",
                 "STRIPE_TERMINAL_READER_ID",
                 "STRIPE_TERMINAL_LOCATION_ID",
+                "UPLOAD_BASE_URL",
+                "UPLOAD_ENABLED",
                 "CAMERA_PROVIDER",
                 "TEST_MODE"
             },

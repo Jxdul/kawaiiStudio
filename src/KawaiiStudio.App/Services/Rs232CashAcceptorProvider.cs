@@ -42,6 +42,8 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private Timer? _pollTimer;
     private bool _expectBillType;
     private bool _handshakeComplete;
+    private bool _acceptingEnabled;
+    private bool? _lastAppliedAccepting;
     private int? _pendingAmount;
     private string? _pendingRejectReason;
     private decimal _remainingAmount;
@@ -82,7 +84,10 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         lock (_stateLock)
         {
             _remainingAmount = amount < 0m ? 0m : amount;
+            _acceptingEnabled = _remainingAmount > 0m;
         }
+
+        ApplyAcceptanceState(force: false);
     }
 
     private bool ConnectInternal()
@@ -160,6 +165,8 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         {
             _expectBillType = false;
             _handshakeComplete = false;
+            _acceptingEnabled = false;
+            _lastAppliedAccepting = null;
             _pendingAmount = null;
             _pendingRejectReason = null;
         }
@@ -223,7 +230,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
                 KawaiiStudio.App.App.Log("CASH_HANDSHAKE_OK");
             }
 
-            SendByte(CommandEnable);
+            ApplyAcceptanceState(force: true);
             return;
         }
 
@@ -256,8 +263,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
         if (value >= 0x20 && value <= 0x2A)
         {
-            KawaiiStudio.App.App.Log($"CASH_FAULT code=0x{value:X2}");
-            SendByte(CommandDisable);
+            HandleFault(value);
             return;
         }
     }
@@ -278,7 +284,11 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             if (BillTypeMap.TryGetValue(value, out var mappedAmount))
             {
                 amount = mappedAmount;
-                if (amount <= 0)
+                if (!_acceptingEnabled)
+                {
+                    rejectReason = "intake_disabled";
+                }
+                else if (amount <= 0)
                 {
                     rejectReason = "invalid_amount";
                 }
@@ -345,6 +355,44 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         }
 
         BillRejected?.Invoke(this, new CashAcceptorEventArgs(amount, reason));
+    }
+
+    private void HandleFault(byte code)
+    {
+        KawaiiStudio.App.App.Log($"CASH_FAULT code=0x{code:X2}");
+        lock (_stateLock)
+        {
+            _acceptingEnabled = false;
+            _pendingAmount = null;
+            _pendingRejectReason = null;
+        }
+
+        ApplyAcceptanceState(force: true);
+        BillRejected?.Invoke(this, new CashAcceptorEventArgs(0, $"fault_0x{code:X2}"));
+    }
+
+    private void ApplyAcceptanceState(bool force)
+    {
+        bool accepting;
+        bool handshakeComplete;
+        lock (_stateLock)
+        {
+            accepting = _acceptingEnabled;
+            handshakeComplete = _handshakeComplete;
+            if (!force && _lastAppliedAccepting.HasValue && _lastAppliedAccepting.Value == accepting)
+            {
+                return;
+            }
+
+            _lastAppliedAccepting = accepting;
+        }
+
+        if (!IsConnected || !handshakeComplete)
+        {
+            return;
+        }
+
+        SendByte(accepting ? CommandEnable : CommandDisable);
     }
 
     private void SendByte(byte value)

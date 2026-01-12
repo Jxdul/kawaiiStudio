@@ -52,6 +52,11 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
+              <Border Background="#FDE7E7" BorderBrush="#E2A1A1" BorderThickness="1"
+                      CornerRadius="6" Padding="8" Margin="0,0,0,8"
+                      Visibility="{Binding HasCashError, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding CashErrorText}" FontSize="12" Foreground="#9A2A2A" TextWrapping="Wrap" />
+              </Border>
               <TextBlock Text="Cash" FontSize="18" FontWeight="SemiBold" />
               <TextBlock Text="{Binding CashStatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,8,0,0" />
               <TextBlock Text="{Binding TotalPriceText}" FontSize="12" Foreground="#8A8A8A" Margin="0,2,0,0" />

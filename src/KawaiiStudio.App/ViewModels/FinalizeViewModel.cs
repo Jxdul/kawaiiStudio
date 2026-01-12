@@ -12,6 +12,7 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
     private readonly SessionService _session;
     private readonly FrameCompositionService _composer;
     private readonly VideoCompilationService _videoCompiler;
+    private readonly UploadService _uploadService;
     private readonly RelayCommand _continueCommand;
     private string _statusText = "Preparing output...";
     private bool _canContinue;
@@ -21,6 +22,7 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         SessionService session,
         FrameCompositionService composer,
         VideoCompilationService videoCompiler,
+        UploadService uploadService,
         ThemeCatalogService themeCatalog)
         : base(themeCatalog, "finalize")
     {
@@ -28,6 +30,7 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         _session = session;
         _composer = composer;
         _videoCompiler = videoCompiler;
+        _uploadService = uploadService;
         _continueCommand = new RelayCommand(() => _navigation.Navigate("printing"), () => _canContinue);
         ContinueCommand = _continueCommand;
         BackCommand = new RelayCommand(() => _navigation.Navigate("review"));
@@ -67,11 +70,9 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         }
 
         var (withQrPath, withoutQrPath) = outputPaths.Value;
-        if (_composer.TrySavePrintComposite(_session.Current, withQrPath, out var error))
+        if (_composer.TrySavePrintComposite(_session.Current, withoutQrPath, includeQr: false, out var error))
         {
-            _session.SetFinalImagePath(withQrPath);
-            _ = _composer.TrySavePrintComposite(_session.Current, withoutQrPath, includeQr: false, out _);
-
+            var videoOk = false;
             if (!CanBuildVideo(out var skipReason))
             {
                 StatusText = "Composite ready. Video skipped.";
@@ -88,20 +89,43 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
                 if (videoResult.success && !string.IsNullOrWhiteSpace(videoResult.path))
                 {
                     _session.SetVideoPath(videoResult.path);
-                    StatusText = "Composite and video ready.";
+                    videoOk = true;
                     KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_OK file={Path.GetFileName(videoResult.path)}");
                 }
                 else
                 {
-                    StatusText = "Composite ready. Video failed.";
                     var reason = string.IsNullOrWhiteSpace(videoResult.error) ? "unknown" : videoResult.error;
+                    _session.SetVideoPath(null);
                     KawaiiStudio.App.App.Log($"FINALIZE_VIDEO_FAILED reason={reason}");
                 }
             }
 
+            var uploadOk = await TryUploadAsync(withoutQrPath);
+            _session.SetFinalImagePath(withQrPath);
+            if (_composer.TrySavePrintComposite(_session.Current, withQrPath, out var qrError))
+            {
+                if (videoOk && uploadOk)
+                {
+                    StatusText = "Composite, video, and upload ready.";
+                }
+                else if (videoOk)
+                {
+                    StatusText = "Composite and video ready.";
+                }
+                else
+                {
+                    StatusText = "Composite ready. Video failed.";
+                }
+                KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_OK file={Path.GetFileName(withQrPath)}");
+            }
+            else
+            {
+                StatusText = qrError ?? "Composite failed.";
+                KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_FAILED reason={qrError}");
+            }
+
             _canContinue = true;
             _continueCommand.RaiseCanExecuteChanged();
-            KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_OK file={Path.GetFileName(withQrPath)}");
             return;
         }
 
@@ -142,5 +166,35 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
 
         reason = string.Empty;
         return true;
+    }
+
+    private async Task<bool> TryUploadAsync(string imagePath)
+    {
+        if (!_uploadService.IsEnabled)
+        {
+            KawaiiStudio.App.App.Log("UPLOAD_SKIPPED reason=disabled");
+            return false;
+        }
+
+        var videoPath = _session.Current.VideoPath;
+        if (string.IsNullOrWhiteSpace(videoPath))
+        {
+            KawaiiStudio.App.App.Log("UPLOAD_SKIPPED reason=video_missing");
+            return false;
+        }
+
+        StatusText = "Uploading media...";
+        KawaiiStudio.App.App.Log("UPLOAD_STARTED");
+        var result = await _uploadService.UploadAsync(_session.Current, imagePath, videoPath, System.Threading.CancellationToken.None);
+        if (result.ok && !string.IsNullOrWhiteSpace(result.url))
+        {
+            _session.SetQrUrl(result.url);
+            KawaiiStudio.App.App.Log("UPLOAD_OK");
+            return true;
+        }
+
+        var failReason = string.IsNullOrWhiteSpace(result.error) ? "upload_failed" : result.error;
+        KawaiiStudio.App.App.Log($"UPLOAD_FAILED reason={failReason}");
+        return false;
     }
 }
