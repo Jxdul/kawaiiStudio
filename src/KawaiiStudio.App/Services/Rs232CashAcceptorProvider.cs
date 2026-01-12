@@ -20,6 +20,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private const byte CommandReject = 0x0F;
 
     private const byte EventPowerUp = 0x80;
+    private const byte EventHandshakeComplete = 0x8F;
     private const byte EventBillValidated = 0x81;
     private const byte EventStacked = 0x10;
     private const byte EventRejected = 0x11;
@@ -32,6 +33,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     };
 
     private readonly string _portName;
+    private readonly HashSet<int> _allowedBills;
     private readonly object _writeLock = new();
     private readonly object _stateLock = new();
     private SerialPort? _port;
@@ -39,13 +41,15 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private Task? _readTask;
     private Timer? _pollTimer;
     private bool _expectBillType;
+    private bool _handshakeComplete;
     private int? _pendingAmount;
     private string? _pendingRejectReason;
     private decimal _remainingAmount;
 
-    public Rs232CashAcceptorProvider(string portName)
+    public Rs232CashAcceptorProvider(string portName, IEnumerable<int>? allowedBills = null)
     {
         _portName = portName;
+        _allowedBills = NormalizeAllowedBills(allowedBills);
     }
 
     public bool IsConnected { get; private set; }
@@ -155,6 +159,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         lock (_stateLock)
         {
             _expectBillType = false;
+            _handshakeComplete = false;
             _pendingAmount = null;
             _pendingRejectReason = null;
         }
@@ -196,9 +201,28 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
     private void HandleByte(byte value)
     {
+        if (ShouldLogRxByte(value))
+        {
+            KawaiiStudio.App.App.Log($"CASH_RX byte=0x{value:X2}");
+        }
+
         if (value == EventPowerUp)
         {
+            _handshakeComplete = false;
+            KawaiiStudio.App.App.Log("CASH_HANDSHAKE_START");
             SendByte(CommandAck);
+            SendByte(CommandEnable);
+            return;
+        }
+
+        if (value == EventHandshakeComplete)
+        {
+            if (!_handshakeComplete)
+            {
+                _handshakeComplete = true;
+                KawaiiStudio.App.App.Log("CASH_HANDSHAKE_OK");
+            }
+
             SendByte(CommandEnable);
             return;
         }
@@ -257,6 +281,10 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
                 if (amount <= 0)
                 {
                     rejectReason = "invalid_amount";
+                }
+                else if (_allowedBills.Count > 0 && !_allowedBills.Contains(amount))
+                {
+                    rejectReason = "unsupported_denomination";
                 }
                 else if (_remainingAmount <= 0m)
                 {
@@ -331,10 +359,45 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         {
             port.Write(new[] { value }, 0, 1);
         }
+
+        if (value != CommandPoll)
+        {
+            KawaiiStudio.App.App.Log($"CASH_TX byte=0x{value:X2}");
+        }
     }
 
     private static bool IsBillType(byte value)
     {
         return value >= 0x40 && value <= 0x44;
+    }
+
+    private static bool ShouldLogRxByte(byte value)
+    {
+        return value == EventPowerUp
+            || value == EventHandshakeComplete
+            || value == EventBillValidated
+            || value == EventStacked
+            || value == EventRejected
+            || IsBillType(value)
+            || (value >= 0x20 && value <= 0x2A);
+    }
+
+    private static HashSet<int> NormalizeAllowedBills(IEnumerable<int>? allowedBills)
+    {
+        if (allowedBills is null)
+        {
+            return new HashSet<int>();
+        }
+
+        var results = new HashSet<int>();
+        foreach (var bill in allowedBills)
+        {
+            if (bill > 0)
+            {
+                results.Add(bill);
+            }
+        }
+
+        return results;
     }
 }

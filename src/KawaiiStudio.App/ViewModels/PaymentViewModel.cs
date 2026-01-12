@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Input;
@@ -22,14 +23,22 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private readonly RelayCommand _startCardPaymentCommand;
     private readonly RelayCommand _approveCardPaymentCommand;
     private readonly RelayCommand _declineCardPaymentCommand;
+    private readonly RelayCommand _simulateVisaCommand;
+    private readonly RelayCommand _simulateDeclinedCommand;
+    private readonly RelayCommand _simulateInsufficientFundsCommand;
+    private readonly RelayCommand _simulateLostCardCommand;
+    private readonly RelayCommand _simulateStolenCardCommand;
+    private readonly RelayCommand _simulateExpiredCardCommand;
+    private readonly RelayCommand _simulateProcessingErrorCommand;
     private readonly RelayCommand _backCommand;
     private string _summaryText = string.Empty;
-    private string _tokenStatusText = string.Empty;
+    private string _cashStatusText = string.Empty;
     private string _totalPriceText = string.Empty;
+    private string _cashDenominationsText = string.Empty;
     private string _cardStatusText = "Card reader ready.";
-    private int _tokensRequired;
     private bool _isCashActive = true;
     private bool _isCardPaymentInProgress;
+    private bool _isCardTestMode;
 
     public PaymentViewModel(
         NavigationService navigation,
@@ -59,9 +68,23 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _startCardPaymentCommand = new RelayCommand(StartCardPayment, CanStartCardPayment);
         _approveCardPaymentCommand = new RelayCommand(ApproveCardPayment, CanResolveCardPayment);
         _declineCardPaymentCommand = new RelayCommand(DeclineCardPayment, CanResolveCardPayment);
+        _simulateVisaCommand = new RelayCommand(() => SimulateTerminalTest("4242424242424242", "Visa"), CanSimulateTerminalTest);
+        _simulateDeclinedCommand = new RelayCommand(() => SimulateTerminalTest("4000000000000002", "Decline"), CanSimulateTerminalTest);
+        _simulateInsufficientFundsCommand = new RelayCommand(() => SimulateTerminalTest("4000000000009995", "Insufficient Funds"), CanSimulateTerminalTest);
+        _simulateLostCardCommand = new RelayCommand(() => SimulateTerminalTest("4000000000009987", "Lost Card"), CanSimulateTerminalTest);
+        _simulateStolenCardCommand = new RelayCommand(() => SimulateTerminalTest("4000000000009979", "Stolen Card"), CanSimulateTerminalTest);
+        _simulateExpiredCardCommand = new RelayCommand(() => SimulateTerminalTest("4000000000000069", "Expired Card"), CanSimulateTerminalTest);
+        _simulateProcessingErrorCommand = new RelayCommand(() => SimulateTerminalTest("4000000000000119", "Processing Error"), CanSimulateTerminalTest);
         StartCardPaymentCommand = _startCardPaymentCommand;
         ApproveCardPaymentCommand = _approveCardPaymentCommand;
         DeclineCardPaymentCommand = _declineCardPaymentCommand;
+        SimulateVisaCommand = _simulateVisaCommand;
+        SimulateDeclinedCommand = _simulateDeclinedCommand;
+        SimulateInsufficientFundsCommand = _simulateInsufficientFundsCommand;
+        SimulateLostCardCommand = _simulateLostCardCommand;
+        SimulateStolenCardCommand = _simulateStolenCardCommand;
+        SimulateExpiredCardCommand = _simulateExpiredCardCommand;
+        SimulateProcessingErrorCommand = _simulateProcessingErrorCommand;
         _backCommand = new RelayCommand(() => _navigation.Navigate("frame"), () => !_session.Current.IsPaid);
         BackCommand = _backCommand;
         CancelCommand = new RelayCommand(Cancel, () => !_session.Current.IsPaid);
@@ -80,6 +103,13 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     public ICommand StartCardPaymentCommand { get; }
     public ICommand ApproveCardPaymentCommand { get; }
     public ICommand DeclineCardPaymentCommand { get; }
+    public ICommand SimulateVisaCommand { get; }
+    public ICommand SimulateDeclinedCommand { get; }
+    public ICommand SimulateInsufficientFundsCommand { get; }
+    public ICommand SimulateLostCardCommand { get; }
+    public ICommand SimulateStolenCardCommand { get; }
+    public ICommand SimulateExpiredCardCommand { get; }
+    public ICommand SimulateProcessingErrorCommand { get; }
     public ICommand BackCommand { get; }
     public ICommand CancelCommand { get; }
 
@@ -145,12 +175,28 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         }
     }
 
-    public string TokenStatusText
+    public bool IsCardTestMode
     {
-        get => _tokenStatusText;
+        get => _isCardTestMode;
         private set
         {
-            _tokenStatusText = value;
+            if (_isCardTestMode == value)
+            {
+                return;
+            }
+
+            _isCardTestMode = value;
+            OnPropertyChanged();
+            UpdateInsertCommandState();
+        }
+    }
+
+    public string CashStatusText
+    {
+        get => _cashStatusText;
+        private set
+        {
+            _cashStatusText = value;
             OnPropertyChanged();
         }
     }
@@ -161,6 +207,16 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         private set
         {
             _totalPriceText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string CashDenominationsText
+    {
+        get => _cashDenominationsText;
+        private set
+        {
+            _cashDenominationsText = value;
             OnPropertyChanged();
         }
     }
@@ -186,22 +242,40 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         builder.AppendLine($"Total: {FormatCurrency(CalculateTotalPrice())}");
 
         SummaryText = builder.ToString().TrimEnd();
-        UpdateTokenStatus();
+        UpdateCashStatus();
+        UpdateCashDenominations();
+        UpdateCardTestMode();
         OnPropertyChanged(nameof(IsPaid));
         UpdateInsertCommandState();
         _backCommand.RaiseCanExecuteChanged();
     }
 
-    private void UpdateTokenStatus()
+    private void UpdateCashStatus()
     {
         var total = CalculateTotalPrice();
-        var tokensInserted = _session.Current.TokensInserted;
-        TokenStatusText = _tokensRequired <= 0
+        var cashInserted = _session.Current.CashInserted;
+        CashStatusText = total <= 0m
             ? "Cash: pricing not set"
-            : $"Inserted: {FormatCurrency(tokensInserted)} / {FormatCurrency(total)}";
+            : $"Inserted: {FormatCurrency(cashInserted)} / {FormatCurrency(total)}";
 
         TotalPriceText = $"Total due: {FormatCurrency(total)}";
         _cashAcceptor.UpdateRemainingAmount(GetRemainingDue());
+    }
+
+    private void UpdateCashDenominations()
+    {
+        var denoms = _settings.CashDenominations
+            .OrderBy(value => value)
+            .ToList();
+
+        if (denoms.Count == 0)
+        {
+            CashDenominationsText = "Accepts: see staff settings";
+            return;
+        }
+
+        var formatted = string.Join(" / ", denoms.Select(value => $"${value}"));
+        CashDenominationsText = $"Accepts: {formatted}";
     }
 
     private decimal CalculateTotalPrice()
@@ -209,23 +283,12 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         var session = _session.Current;
         var total = _settings.GetPrice(session.TemplateType, session.Quantity);
         session.SetPriceTotal(total);
-        _tokensRequired = CalculateTokensRequired(total, _settings.TokenValue);
         return total;
-    }
-
-    private static int CalculateTokensRequired(decimal totalPrice, decimal valuePerToken)
-    {
-        if (totalPrice <= 0m || valuePerToken <= 0m)
-        {
-            return 0;
-        }
-
-        return (int)Math.Ceiling(totalPrice / valuePerToken);
     }
 
     private bool CanInsertBill()
     {
-        return !_session.Current.IsPaid && _tokensRequired > 0 && IsCashActive && _settings.TestMode;
+        return !_session.Current.IsPaid && GetRemainingDue() > 0m && IsCashActive && _settings.TestMode;
     }
 
     private bool CanSelectCard()
@@ -299,6 +362,32 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _cardPayment.SimulateDecline("declined");
     }
 
+    private void UpdateCardTestMode()
+    {
+        IsCardTestMode = _settings.TestMode && _cardPayment is IStripeTerminalTestProvider;
+    }
+
+    private bool CanSimulateTerminalTest()
+    {
+        return !_session.Current.IsPaid && IsCardActive && IsCardPaymentInProgress && IsCardTestMode;
+    }
+
+    private async void SimulateTerminalTest(string cardNumber, string label)
+    {
+        if (!CanSimulateTerminalTest() || _cardPayment is not IStripeTerminalTestProvider testProvider)
+        {
+            return;
+        }
+
+        CardStatusText = $"Simulating {label}...";
+        var ok = await testProvider.SimulatePaymentAsync(cardNumber, CancellationToken.None);
+        if (!ok && !_session.Current.IsPaid)
+        {
+            CardStatusText = $"Simulation failed: {label}";
+            IsCardPaymentInProgress = false;
+        }
+    }
+
     private void HandleCardApproved(object? sender, CardPaymentEventArgs e)
     {
         IsCardPaymentInProgress = false;
@@ -363,11 +452,17 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private void HandleBillAccepted(object? sender, CashAcceptorEventArgs e)
     {
-        _session.Current.AddTokens(e.Amount);
-        UpdateTokenStatus();
-        KawaiiStudio.App.App.Log($"PAYMENT_BILL_ACCEPTED amount={e.Amount} total={_session.Current.TokensInserted}");
+        _session.Current.AddCash(e.Amount);
+        UpdateCashStatus();
+        KawaiiStudio.App.App.Log($"PAYMENT_BILL_ACCEPTED amount={e.Amount:0.00} total={_session.Current.CashInserted:0.00}");
 
-        if (_tokensRequired > 0 && _session.Current.TokensInserted >= _tokensRequired)
+        var total = _session.Current.PriceTotal;
+        if (total <= 0m)
+        {
+            total = CalculateTotalPrice();
+        }
+
+        if (total > 0m && _session.Current.CashInserted >= total)
         {
             MarkPaid();
         }
@@ -413,6 +508,13 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _startCardPaymentCommand.RaiseCanExecuteChanged();
         _approveCardPaymentCommand.RaiseCanExecuteChanged();
         _declineCardPaymentCommand.RaiseCanExecuteChanged();
+        _simulateVisaCommand.RaiseCanExecuteChanged();
+        _simulateDeclinedCommand.RaiseCanExecuteChanged();
+        _simulateInsufficientFundsCommand.RaiseCanExecuteChanged();
+        _simulateLostCardCommand.RaiseCanExecuteChanged();
+        _simulateStolenCardCommand.RaiseCanExecuteChanged();
+        _simulateExpiredCardCommand.RaiseCanExecuteChanged();
+        _simulateProcessingErrorCommand.RaiseCanExecuteChanged();
     }
 
     private decimal GetRemainingDue()
@@ -423,7 +525,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             total = CalculateTotalPrice();
         }
 
-        var remaining = total - _session.Current.TokensInserted;
+        var remaining = total - _session.Current.CashInserted;
         return remaining < 0m ? 0m : remaining;
     }
 
@@ -491,5 +593,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
                 KawaiiStudio.App.App.Log("PAYMENT_MODE card");
             }
         }
+
+        UpdateCardTestMode();
     }
 }

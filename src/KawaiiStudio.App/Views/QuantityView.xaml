@@ -10,10 +10,10 @@
     <Grid Margin="24">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
         <TextBlock Text="Select Quantity" FontSize="32" FontWeight="SemiBold" Margin="0,0,0,16" />
-        <ItemsControl ItemsSource="{Binding AvailableQuantities}">
+        <ItemsControl ItemsSource="{Binding AvailableQuantities}" HorizontalAlignment="Center">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <UniformGrid Rows="1" Columns="4" />
+              <UniformGrid Rows="1" Columns="0" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>

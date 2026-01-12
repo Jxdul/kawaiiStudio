@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stripe Terminal Simulator</title>
+    <link rel="stylesheet" href="global.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="main-header">
+      <div class="header-content">
+        <div class="header-text">
+          <span class="header-icon"><</span>
+          <span class="header-icon">/</span>
+          <span class="header-icon">></span>
+          Terminal Quickstart
+        </div>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="main-content">
+          <!-- Create a simulated Reader Section -->
+          <div class="section">
+            <h2>Create a simulated Reader</h2>
+
+            <!-- Step 1: Create a Location -->
+            <div class="step">
+              <div class="step-header" onclick="toggleStep(this, event)">
+                <i class="fas fa-chevron-down"></i>
+                <span class="step-number">1.</span>
+                <span class="step-title">Create a Location</span>
+                <button
+                  id="create-location-button"
+                  class="btn btn-light float-right"
+                >
+                  <i class="fas fa-plus"></i> Create
+                </button>
+              </div>
+              <div class="step-content expanded">
+                <p>
+                  Create locations to organize your readers. Locations group
+                  readers and allow them to automatically download the reader
+                  configuration needed for their region of use. You must assign
+                  a location to each reader when you register it, which you can
+                  do using the API or the Dashboard.
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 2: Register a Reader -->
+            <div class="step">
+              <div class="step-header" onclick="toggleStep(this, event)">
+                <i class="fas fa-chevron-right"></i>
+                <span class="step-number">2.</span>
+                <span class="step-title">Register a Reader</span>
+                <button
+                  id="create-reader-button"
+                  class="btn btn-light float-right"
+                  disabled
+                >
+                  <i class="fas fa-user-plus"></i> Register
+                </button>
+              </div>
+              <div class="step-content">
+                <p>
+                  Register your reader with Stripe Terminal to enable payment
+                  processing.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Simulate a transaction Section -->
+          <div class="section">
+            <h2>Simulate a transaction</h2>
+
+            <!-- Step 3: Enter the transaction amount and create a PaymentIntent -->
+            <div class="step">
+              <div class="step-header" onclick="toggleStep(this, event)">
+                <i class="fas fa-chevron-right"></i>
+                <span class="step-number">3.</span>
+                <span class="step-title">Enter the transaction amount and create a PaymentIntent</span>
+                <button
+                  id="create-payment-intent-button"
+                  class="btn btn-light float-right"
+                  disabled
+                >
+                  <i class="fas fa-credit-card"></i> Create
+                </button>
+              </div>
+              <div class="step-content">
+                <p>
+                  Simulate the amount you want to charge by entering it below. Use cents only—skip decimals and commas, since currency separators vary internationally.
+                  Use this amount to create a PaymentIntent on your server. A PaymentIntent tracks the customer's payment lifecycle, keeping track of any failed attempts and ensuring they're only charged once.
+                </p>
+              </div>
+              <div class="step-input">
+                <p>Transaction amount</p>
+                <p class="subtitle">Use cents or the smallest currency unit.</p>
+                <div class="input-group">
+                  <input
+                    type="number"
+                    id="amount-input"
+                    class="form-control"
+                    value="2000"
+                    min="50"
+                    max="999999"
+                    data-1p-ignore
+                  />
+                  <span class="amount-display">$20.00 USD</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 4: Process PaymentIntent on the simulated reader -->
+            <div class="step">
+              <div class="step-header" onclick="toggleStep(this, event)">
+                <i class="fas fa-chevron-right"></i>
+                <span class="step-number">4.</span>
+                <span class="step-title"
+                  >Process PaymentIntent on the simulated reader</span
+                >
+                <button
+                  id="process-payment-button"
+                  class="btn btn-light float-right"
+                  disabled
+                >
+                  <i class="fas fa-play"></i> Process
+                </button>
+              </div>
+              <div class="step-content">
+                <p>
+                  Create a PaymentIntent with the specific amount and process the payment on your simulated reader.
+                  It prompts the customer to present their card by inserting or tapping it before attempting authorization.
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 5: Simulate card presentment -->
+            <div class="step">
+              <div class="step-header" onclick="toggleStep(this, event)">
+                <i class="fas fa-chevron-right"></i>
+                <span class="step-number">5.</span>
+                <span class="step-title"
+                  >Simulate card presentment by the cardholder</span
+                >
+                <button
+                  id="simulate-payment-button"
+                  class="btn btn-light float-right"
+                  disabled
+                >
+                  <i class="fas fa-hand-paper"></i> Simulate
+                </button>
+              </div>
+              <div class="step-content">
+                <div class="note-box">
+                  <p>
+                    In a real transaction flow, the customer inserts or taps
+                    their card on the physical reader. With a simulated reader,
+                    you simulate the card presentment step by making another API
+                    call.
+                  </p>
+                </div>
+
+                <p>
+                  This call successfully confirms the PaymentIntent with a test
+                  card. You can also try other test cards.
+                </p>
+              </div>
+              <div class="step-input">
+                <div class="card-input-section">
+                  <label for="card-number-input">Credit card number</label>
+                  <input
+                    type="text"
+                    id="card-number-input"
+                    class="form-control"
+                    value="4242 4242 4242 4242"
+                    data-1p-ignore
+                  />
+                </div>
+
+                <div class="test-cards">
+                  <h4>Test card numbers</h4>
+                  <div class="test-card-row">
+                    <span class="test-card-label">Payment succeeds</span>
+                    <span class="test-card-number">4242 4242 4242 4242</span>
+                    <button
+                      class="btn-copy"
+                      onclick="copyCardNumber('4242 4242 4242 4242')"
+                    >
+                      <i class="far fa-copy"></i>
+                    </button>
+                  </div>
+                  <div class="test-card-row">
+                    <span class="test-card-label">Payment is declined</span>
+                    <span class="test-card-number">4000 0000 0000 9995</span>
+                    <button
+                      class="btn-copy"
+                      onclick="copyCardNumber('4000 0000 0000 9995')"
+                    >
+                      <i class="far fa-copy"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 6: Capture PaymentIntent -->
+            <div class="step">
+              <div class="step-header" onclick="toggleStep(this, event)">
+                <i class="fas fa-chevron-right"></i>
+                <span class="step-number">6.</span>
+                <span class="step-title">Capture the PaymentIntent</span>
+                <button
+                  id="capture-button"
+                  class="btn btn-light float-right"
+                  disabled
+                >
+                  <i class="fas fa-check"></i> Capture
+                </button>
+              </div>
+              <div class="step-content">
+                <p>
+                  Capture the authorized payment to complete the transaction.
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 7: View payment -->
+            <div class="step">
+              <div class="step-header" onclick="toggleStep(this, event)">
+                <i class="fas fa-chevron-right"></i>
+                <span class="step-number">7.</span>
+                <span class="step-title"
+                  >View the payment in the Stripe Dashboard</span
+                >
+                <button
+                  id="view-dashboard-button"
+                  class="btn btn-light float-right"
+                  disabled
+                >
+                  <i class="fas fa-external-link-alt"></i> View
+                </button>
+              </div>
+              <div class="step-content">
+                <p>View the completed payment in your Stripe Dashboard.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div class="logs-section">
+          <h3>Logs</h3>
+          <div class="logs-header">
+            <span>API request</span>
+          </div>
+          <div id="logs" class="logs-container">
+            <!-- Logs will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      function toggleStep(header, event) {
+        // Don't toggle if a button or its child elements were clicked
+        if (event.target.closest(".btn")) {
+          return;
+        }
+
+        const content = header.nextElementSibling;
+        const icon = header.querySelector("i");
+
+        if (
+          content.classList.contains("step-content") &&
+          content.classList.contains("expanded")
+        ) {
+          content.classList.remove("expanded");
+          icon.classList.remove("fa-chevron-down");
+          icon.classList.add("fa-chevron-right");
+        } else if (content.classList.contains("step-content")) {
+          content.classList.add("expanded");
+          icon.classList.remove("fa-chevron-right");
+          icon.classList.add("fa-chevron-down");
+        }
+      }
+
+      function copyCardNumber(cardNumber) {
+        const cardInput = document.getElementById("card-number-input");
+        cardInput.value = cardNumber;
+        cardInput.focus();
+        cardInput.select();
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(cardNumber).then(() => {
+          // Optional: show a toast or feedback
+          console.log("Card number copied to clipboard");
+        });
+      }
+    </script>
+    <script src="client.js"></script>
+  </body>
+</html>

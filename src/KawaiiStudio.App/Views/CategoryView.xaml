@@ -33,31 +33,38 @@
         </TextBlock>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <ItemsControl ItemsSource="{Binding Categories}">
+          <Grid HorizontalAlignment="Center">
+            <ItemsControl ItemsSource="{Binding Categories}" HorizontalAlignment="Center" MaxWidth="1100">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
-                <WrapPanel ItemWidth="220" ItemHeight="260" />
+                <WrapPanel ItemWidth="320" ItemHeight="300" HorizontalAlignment="Center" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Button Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                         CommandParameter="{Binding}"
-                        Margin="0,0,12,12"
-                        Padding="0">
-                  <Border Background="#EEE7DD" CornerRadius="10" Padding="12">
+                        Margin="0,0,20,20"
+                        Padding="0"
+                        Background="Transparent"
+                        BorderThickness="0">
+                  <Border Background="#EEE7DD" CornerRadius="18" Padding="16">
+                    <Border.Effect>
+                      <DropShadowEffect Color="#20000000" BlurRadius="16" ShadowDepth="6" />
+                    </Border.Effect>
                     <StackPanel>
-                      <Border Background="#E7DFD6" CornerRadius="6" Height="140" Margin="0,0,0,8">
-                        <Image Source="{Binding PreviewImagePath, Converter={StaticResource FilePathToImage}}" Stretch="Uniform" />
+                      <Border Background="#E7DFD6" CornerRadius="12" Height="180" Margin="0,0,0,12">
+                        <Image Source="{Binding PreviewImagePath, Converter={StaticResource FilePathToImage}}" Stretch="UniformToFill" />
                       </Border>
-                      <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" />
-                      <TextBlock Text="{Binding FrameCount, StringFormat={}{0} frames}" FontSize="12" Foreground="#B8B8B8" />
+                      <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding FrameCount, StringFormat={}{0} frames}" FontSize="12" Foreground="#8A8A8A" />
                     </StackPanel>
                   </Border>
                 </Button>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          </Grid>
         </ScrollViewer>
       </Grid>
     </Grid>

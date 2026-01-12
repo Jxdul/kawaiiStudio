@@ -1,7 +1,7 @@
 # Photobooth App — Product Requirements & Technical Specification (v0.1)
 
 **Owner:** Jadyl
-**Last updated:** January 8, 2026
+**Last updated:** January 11, 2026
 **Status:** Draft (build-ready spec)
 
 ---
@@ -41,8 +41,8 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 * Kiosk UI flow (customer + staff).
 * Frame scanning from folders (categories + templates).
 * Template editor for slot/QR placement (per template + per frame overrides).
-* Cash payment via **serial bill acceptor**.
-* Card payment: **placeholder architecture** (implementation TBD).
+* Cash payment via **serial bill acceptor** (RS232 protocol).
+* Card payment: **placeholder architecture** with simulated provider (implementation TBD).
 * Canon camera integration via **Canon SDK/API**.
 * Continuous video recording during session capture.
 * Composite image generation + QR overlay.
@@ -90,8 +90,9 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 
 At any point:
 
-* Inactivity timer triggers **Auto-return to HOME** (unless payment already confirmed; see §12).
-* Critical errors show a friendly “Call Staff” screen + log event.
+* Inactivity timer returns to HOME on pre-payment screens; HOME and CAPTURE are exempt.
+* After payment, inactivity advances to the next screen (review timeout auto-fills remaining slots).
+* Critical errors show a friendly "Call Staff" screen + log event.
 
 ---
 
@@ -233,6 +234,7 @@ UI:
 Rules:
 
 * Cash: accumulate accepted value until total >= price.
+* Cash denominations are configured via CASH_DENOMS in appconfig.ini (current build).
 * Must log bill acceptor events (insert/reject/jam/accepted).
 * On success: mark session as **Paid** and proceed to Capture.
 * After Paid: disallow returning to earlier screens (unless staff override).
@@ -290,6 +292,7 @@ Interaction rules:
     * 2×6 requires **4**
     * 4×6 requires **2 / 4 / 6** depending on style
 * Next button enabled only when all required slots are filled.
+* On inactivity timeout, keep selected photos, auto-fill remaining slots from unselected photos, then advance.
 * Optional “Change Frame” button (configurable)
 
   * If enabled: returns to frame selection but keeps photos.
@@ -483,6 +486,7 @@ Configurable method(s), e.g.:
 3. **Cash Acceptor**
 
    * Serial port settings (COM, baud, protocol)
+   * Denominations list (CSV)
    * Enable/disable
    * Live event viewer
    * Totals: daily/weekly/all-time
@@ -590,6 +594,7 @@ Minimum fields:
 * `frameId` (path-based)
 * `priceTotal`
 * `paymentStatus` + details
+* `cashInsertedTotal`
 * `cashEvents[]`
 * `capturedPhotos[8]` (file paths)
 * `previewFramesFolder` (low-frame-rate live view images)
@@ -602,6 +607,9 @@ Minimum fields:
 ---
 
 ## 15) Configuration Files (Recommended)
+
+Current build uses `Config/appconfig.ini` (INI) for pricing, timeouts, cash denominations, and hardware settings.
+JSON configs below are the long-term target.
 
 ### `config/app.json` (example)
 
@@ -710,4 +718,5 @@ To keep card payments and devices swappable, implement providers:
 2. **Upload target:** local server vs cloud (affects QR landing page) # maybe will try to be on cloudflare
 3. **Card payment provider:** Square/Stripe terminal/Moneris/etc. (API constraints) # will try stripe
 4. **Exact print resolution/DPI & template pixel sizes** for each product # 1200 × 1800 for the full print. 2x6 will have to be duplicated side by side then sent to printer after with the option of cutting in half.
+
 

@@ -7,9 +7,14 @@ namespace KawaiiStudio.App.Services;
 
 public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
 {
-    private static readonly HashSet<int> AllowedBills = new() { 5, 10, 20 };
+    private readonly HashSet<int> _allowedBills;
     private decimal _remainingAmount;
     private bool _hasRemainingAmount;
+
+    public SimulatedCashAcceptorProvider(IEnumerable<int>? allowedBills = null)
+    {
+        _allowedBills = NormalizeAllowedBills(allowedBills);
+    }
 
     public bool IsConnected { get; private set; }
 
@@ -43,7 +48,7 @@ public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
             return;
         }
 
-        if (AllowedBills.Contains(amount))
+        if (_allowedBills.Contains(amount))
         {
             BillAccepted?.Invoke(this, new CashAcceptorEventArgs(amount));
             return;
@@ -56,5 +61,31 @@ public sealed class SimulatedCashAcceptorProvider : ICashAcceptorProvider
     {
         _remainingAmount = amount;
         _hasRemainingAmount = true;
+    }
+
+    private static HashSet<int> NormalizeAllowedBills(IEnumerable<int>? allowedBills)
+    {
+        if (allowedBills is null)
+        {
+            return new HashSet<int> { 5, 10, 20 };
+        }
+
+        var results = new HashSet<int>();
+        foreach (var bill in allowedBills)
+        {
+            if (bill > 0)
+            {
+                results.Add(bill);
+            }
+        }
+
+        if (results.Count == 0)
+        {
+            results.Add(5);
+            results.Add(10);
+            results.Add(20);
+        }
+
+        return results;
     }
 }

@@ -22,11 +22,12 @@
         <StackPanel>
           <Border Background="#EEE7DD" CornerRadius="10" Padding="16" Margin="0,0,0,16">
             <StackPanel>
-              <TextBlock Text="Tokens" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="Cash" FontSize="18" FontWeight="SemiBold" />
               <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <TextBlock Text="Token value ($)" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
-                <TextBox Text="{Binding TokenValue, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                <TextBlock Text="Denominations (csv)" FontSize="12" Foreground="#B8B8B8" Width="140" VerticalAlignment="Center" />
+                <TextBox Text="{Binding CashDenominations, UpdateSourceTrigger=PropertyChanged}" Width="120" />
               </StackPanel>
+              <TextBlock Text="Example: 5,10,20" FontSize="11" Foreground="#8A8A8A" Margin="0,6,0,0" />
             </StackPanel>
           </Border>
 
@@ -102,6 +103,22 @@
               <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                 <TextBlock Text="Cash COM" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
                 <TextBox Text="{Binding CashCom, UpdateSourceTrigger=PropertyChanged}" Width="120" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="Card provider" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
+                <TextBox Text="{Binding CardProvider, UpdateSourceTrigger=PropertyChanged}" Width="160" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="Stripe base URL" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
+                <TextBox Text="{Binding StripeTerminalBaseUrl, UpdateSourceTrigger=PropertyChanged}" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="Stripe reader ID" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
+                <TextBox Text="{Binding StripeTerminalReaderId, UpdateSourceTrigger=PropertyChanged}" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="Stripe location ID" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
+                <TextBox Text="{Binding StripeTerminalLocationId, UpdateSourceTrigger=PropertyChanged}" Width="260" />
               </StackPanel>
               <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                 <TextBlock Text="Test mode" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />

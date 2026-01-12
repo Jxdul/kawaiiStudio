@@ -15,7 +15,8 @@ Kiosk-style photobooth app for Windows with a simple customer flow and a frame-d
 - Review selection with slot mapping + composite preview
 - Composite rendering with QR overlay and print-ready output
 - Print preview screen (4x6, with 2x6 duplicated)
-- Token-based payment placeholder (Add 5 Tokens button)
+- Cash acceptor RS232 provider (handshake + cash totals) + simulated card flow (test buttons in test mode)
+- Inactivity handling: home/capture suppressed; post-payment screens auto-advance; review timeout auto-fills
 
 ## Customer flow
 
@@ -91,7 +92,7 @@ PRICE1_46=15
 PRICE2_46=30
 ...
 MAX_QUANTITY=8
-TOKEN_VALUE=1
+CASH_DENOMS=5,10,20
 PrintName=DS-RX1
 cash_COM=COM4
 TEST_MODE=false
@@ -131,10 +132,10 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 
 ## Remaining work (from `specifications.txt`)
 
-- Replace token simulation with real cash acceptor + card provider flows.
-- Pricing should be per template type (2x6_4slots, 4x6_2slots/4slots/6slots).
-- Capture needs live view, video recording, and configurable timers via settings.
+- Finish payment flow: richer cash events (inserted/jam), disable intake after paid, and wire a real card provider.
+- Pricing should be per template type (2x6_4slots, 4x6_2slots/4slots/6slots) rather than size-only.
+- Capture needs video recording, robust disconnect handling, and per-screen timer tuning.
 - Upload hooks, QR destination hosting, and print queue integration are not implemented.
 - Config parsing for `config/app.json` and `config/pricing.json` is not implemented.
-- Provider interfaces for payment/printer/upload are not defined yet.
+- Provider interfaces for printer/upload are not defined yet.
 - Staff menu secret access, device diagnostics, and log export are not implemented.

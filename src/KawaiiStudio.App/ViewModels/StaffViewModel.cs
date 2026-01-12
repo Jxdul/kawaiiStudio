@@ -13,9 +13,13 @@ public sealed class StaffViewModel : ScreenViewModelBase
     private readonly RelayCommand _confirmEntryCommand;
     private readonly RelayCommand _cancelEntryCommand;
     private string _maxQuantity = string.Empty;
-    private string _tokenValue = string.Empty;
     private string _printName = string.Empty;
     private string _cashCom = string.Empty;
+    private string _cashDenominations = string.Empty;
+    private string _cardProvider = string.Empty;
+    private string _stripeTerminalBaseUrl = string.Empty;
+    private string _stripeTerminalReaderId = string.Empty;
+    private string _stripeTerminalLocationId = string.Empty;
     private bool _testMode;
     private StaffSettingEntry? _selectedEntry;
     private string _pendingEntryValue = string.Empty;
@@ -69,16 +73,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
         }
     }
 
-    public string TokenValue
-    {
-        get => _tokenValue;
-        set
-        {
-            _tokenValue = value;
-            OnPropertyChanged();
-        }
-    }
-
     public string PrintName
     {
         get => _printName;
@@ -95,6 +89,56 @@ public sealed class StaffViewModel : ScreenViewModelBase
         set
         {
             _cashCom = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string CashDenominations
+    {
+        get => _cashDenominations;
+        set
+        {
+            _cashDenominations = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string CardProvider
+    {
+        get => _cardProvider;
+        set
+        {
+            _cardProvider = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string StripeTerminalBaseUrl
+    {
+        get => _stripeTerminalBaseUrl;
+        set
+        {
+            _stripeTerminalBaseUrl = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string StripeTerminalReaderId
+    {
+        get => _stripeTerminalReaderId;
+        set
+        {
+            _stripeTerminalReaderId = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string StripeTerminalLocationId
+    {
+        get => _stripeTerminalLocationId;
+        set
+        {
+            _stripeTerminalLocationId = value;
             OnPropertyChanged();
         }
     }
@@ -160,9 +204,13 @@ public sealed class StaffViewModel : ScreenViewModelBase
         }
 
         MaxQuantity = _settings.GetValue("MAX_QUANTITY", "10");
-        TokenValue = _settings.GetValue("TOKEN_VALUE", "1");
+        CashDenominations = _settings.GetValue("CASH_DENOMS", "5,10,20");
         PrintName = _settings.GetValue("PrintName", "DS-RX1");
         CashCom = _settings.GetValue("cash_COM", "COM4");
+        CardProvider = _settings.GetValue("CARD_PROVIDER", "simulated");
+        StripeTerminalBaseUrl = _settings.GetValue("STRIPE_TERMINAL_BASE_URL", "http://localhost:4242");
+        StripeTerminalReaderId = _settings.GetValue("STRIPE_TERMINAL_READER_ID", string.Empty);
+        StripeTerminalLocationId = _settings.GetValue("STRIPE_TERMINAL_LOCATION_ID", string.Empty);
         TestMode = string.Equals(_settings.GetValue("TEST_MODE", "false"), "true", System.StringComparison.OrdinalIgnoreCase);
         SelectedEntry = null;
         PendingEntryValue = string.Empty;
@@ -181,9 +229,13 @@ public sealed class StaffViewModel : ScreenViewModelBase
         }
 
         _settings.SetValue("MAX_QUANTITY", MaxQuantity);
-        _settings.SetValue("TOKEN_VALUE", TokenValue);
+        _settings.SetValue("CASH_DENOMS", CashDenominations);
         _settings.SetValue("PrintName", PrintName);
         _settings.SetValue("cash_COM", CashCom);
+        _settings.SetValue("CARD_PROVIDER", CardProvider);
+        _settings.SetValue("STRIPE_TERMINAL_BASE_URL", StripeTerminalBaseUrl);
+        _settings.SetValue("STRIPE_TERMINAL_READER_ID", StripeTerminalReaderId);
+        _settings.SetValue("STRIPE_TERMINAL_LOCATION_ID", StripeTerminalLocationId);
         _settings.SetValue("TEST_MODE", TestMode ? "true" : "false");
 
         _settings.Save();

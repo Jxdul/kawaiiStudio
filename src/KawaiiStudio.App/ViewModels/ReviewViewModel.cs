@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
@@ -205,5 +206,55 @@ public sealed class ReviewViewModel : ScreenViewModelBase
         return _slotCount > 0
             && _session.Current.SelectedMapping.Count >= _slotCount
             && string.IsNullOrWhiteSpace(_previewError);
+    }
+
+    public void AutoFillMissingSelections()
+    {
+        if (_slotCount <= 0 || Photos.Count == 0)
+        {
+            return;
+        }
+
+        var selected = _session.Current.SelectedMapping;
+        var missingSlots = Enumerable.Range(1, _slotCount)
+            .Where(slot => !selected.ContainsKey(slot))
+            .ToList();
+
+        if (missingSlots.Count == 0)
+        {
+            return;
+        }
+
+        var selectedPhotos = selected.Values.ToHashSet();
+        var remainingPhotos = Photos
+            .Select(photo => photo.Index)
+            .Where(index => !selectedPhotos.Contains(index))
+            .ToList();
+
+        if (remainingPhotos.Count == 0)
+        {
+            return;
+        }
+
+        KawaiiStudio.App.App.Log($"REVIEW_TIMEOUT_AUTOFILL missing={missingSlots.Count}");
+        var rng = Random.Shared;
+        foreach (var slotIndex in missingSlots)
+        {
+            if (remainingPhotos.Count == 0)
+            {
+                break;
+            }
+
+            var pickIndex = rng.Next(remainingPhotos.Count);
+            var photoIndex = remainingPhotos[pickIndex];
+            remainingPhotos.RemoveAt(pickIndex);
+            selectedPhotos.Add(photoIndex);
+            _session.Current.SetSelectedMapping(slotIndex, photoIndex);
+            KawaiiStudio.App.App.Log($"REVIEW_AUTOFILL slot={slotIndex} photo={photoIndex}");
+        }
+
+        SyncSelection();
+        UpdatePreview();
+        UpdateStatus();
     }
 }

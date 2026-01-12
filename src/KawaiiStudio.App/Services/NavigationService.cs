@@ -19,6 +19,15 @@ public sealed class NavigationService
         "library"
     };
 
+    private static readonly HashSet<string> PostPaymentKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "capture",
+        "review",
+        "finalize",
+        "printing",
+        "thank_you"
+    };
+
     private readonly Dictionary<string, ViewModelBase> _viewModels = new(StringComparer.OrdinalIgnoreCase);
     private readonly SessionService _session;
 
@@ -40,7 +49,7 @@ public sealed class NavigationService
     {
         if (!CanNavigate(key))
         {
-            App.Log($"NAVIGATION_BLOCKED target={key}");
+            App.Log($"NAVIGATION_BLOCKED target={key} paid={_session.Current.IsPaid}");
             return;
         }
 
@@ -58,7 +67,18 @@ public sealed class NavigationService
 
     private bool CanNavigate(string key)
     {
-        if (!_session.Current.IsPaid || _session.Current.EndTime is not null)
+        if (!_session.Current.IsPaid)
+        {
+            if (string.Equals(key, "staff", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, "template_editor", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return !PostPaymentKeys.Contains(key);
+        }
+
+        if (_session.Current.EndTime is not null)
         {
             return true;
         }

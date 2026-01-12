@@ -327,9 +327,10 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
     private ICashAcceptorProvider CreateCashProvider(bool testMode)
     {
+        var allowedBills = _settings.CashDenominations;
         return testMode
-            ? new SimulatedCashAcceptorProvider()
-            : new Rs232CashAcceptorProvider(_settings.CashCom);
+            ? new SimulatedCashAcceptorProvider(allowedBills)
+            : new Rs232CashAcceptorProvider(_settings.CashCom, allowedBills);
     }
 
     private static Task<bool> CheckPlaceholderAsync(

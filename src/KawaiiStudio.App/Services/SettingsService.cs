@@ -21,12 +21,16 @@ public sealed class SettingsService
     }
 
     public int MaxQuantity => GetInt("MAX_QUANTITY", 10);
-    public decimal TokenValue => GetDecimal("TOKEN_VALUE", 1m);
     public string PrintName => GetString("PrintName", "DS-RX1");
     public string CashCom => GetString("cash_COM", "COM4");
     public int DefaultTimeout => GetInt("TIMEOUT_DEFAULT", DefaultTimeoutSeconds);
     public int CameraTimerSeconds => GetInt("CAMERA_TIMER_SECONDS", 3);
     public bool TestMode => GetBool("TEST_MODE", false);
+    public IReadOnlyCollection<int> CashDenominations => GetCashDenominations();
+    public string CardProvider => GetString("CARD_PROVIDER", "simulated");
+    public string StripeTerminalBaseUrl => GetString("STRIPE_TERMINAL_BASE_URL", "http://localhost:4242");
+    public string StripeTerminalReaderId => GetString("STRIPE_TERMINAL_READER_ID", string.Empty);
+    public string StripeTerminalLocationId => GetString("STRIPE_TERMINAL_LOCATION_ID", string.Empty);
 
     public string GetValue(string key, string fallback = "")
     {
@@ -73,6 +77,41 @@ public sealed class SettingsService
     {
         var key = GetTimeoutKey(screenKey);
         return key is null ? DefaultTimeout : GetInt(key, DefaultTimeout);
+    }
+
+    private IReadOnlyCollection<int> GetCashDenominations()
+    {
+        var raw = GetString("CASH_DENOMS", "5,10,20");
+        var parsed = ParseCashDenominations(raw);
+        if (parsed.Count == 0)
+        {
+            parsed.Add(5);
+            parsed.Add(10);
+            parsed.Add(20);
+        }
+
+        return parsed;
+    }
+
+    private static HashSet<int> ParseCashDenominations(string? raw)
+    {
+        var results = new HashSet<int>();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return results;
+        }
+
+        var parts = raw.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            if (int.TryParse(part.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+                && value > 0)
+            {
+                results.Add(value);
+            }
+        }
+
+        return results;
     }
 
     private decimal GetPriceByCode(string? sizeCode, int? quantity)
@@ -218,9 +257,13 @@ public sealed class SettingsService
         _values["PRICE4_46"] = "60";
         _values["PRICE5_46"] = "75";
         _values["MAX_QUANTITY"] = "10";
-        _values["TOKEN_VALUE"] = "1";
+        _values["CASH_DENOMS"] = "5,10,20";
         _values["PrintName"] = "DS-RX1";
         _values["cash_COM"] = "COM4";
+        _values["CARD_PROVIDER"] = "simulated";
+        _values["STRIPE_TERMINAL_BASE_URL"] = "http://localhost:4242";
+        _values["STRIPE_TERMINAL_READER_ID"] = string.Empty;
+        _values["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty;
         _values["CAMERA_PROVIDER"] = "simulated";
         _values["TEST_MODE"] = "false";
         _values["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
@@ -263,9 +306,13 @@ public sealed class SettingsService
             ["PRICE4_46"] = "60",
             ["PRICE5_46"] = "75",
             ["MAX_QUANTITY"] = "10",
-            ["TOKEN_VALUE"] = "1",
+            ["CASH_DENOMS"] = "5,10,20",
             ["PrintName"] = "DS-RX1",
             ["cash_COM"] = "COM4",
+            ["CARD_PROVIDER"] = "simulated",
+            ["STRIPE_TERMINAL_BASE_URL"] = "http://localhost:4242",
+            ["STRIPE_TERMINAL_READER_ID"] = string.Empty,
+            ["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty,
             ["CAMERA_PROVIDER"] = "simulated",
             ["TEST_MODE"] = "false",
             ["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture),
@@ -316,12 +363,16 @@ public sealed class SettingsService
             new[]
             {
                 "MAX_QUANTITY",
-                "TOKEN_VALUE"
+                "CASH_DENOMS"
             },
             new[]
             {
                 "PrintName",
                 "cash_COM",
+                "CARD_PROVIDER",
+                "STRIPE_TERMINAL_BASE_URL",
+                "STRIPE_TERMINAL_READER_ID",
+                "STRIPE_TERMINAL_LOCATION_ID",
                 "CAMERA_PROVIDER",
                 "TEST_MODE"
             },

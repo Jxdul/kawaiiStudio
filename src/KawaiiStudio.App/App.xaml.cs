@@ -16,6 +16,7 @@ public partial class App : Application
     private DateTime _inactivityDeadlineUtc = DateTime.MinValue;
     private int _lastTimeoutSeconds = -1;
     private SettingsService? _settings;
+    private static readonly string[] TimeoutSuppressedScreens = { "home", "capture" };
 
     public static SessionService? Session { get; private set; }
     public static NavigationService? Navigation { get; private set; }
@@ -44,7 +45,7 @@ public partial class App : Application
         var cameraService = new CameraService(cameraProvider);
         var cashProvider = CreateCashAcceptorProvider(settings);
         var cashAcceptor = new CashAcceptorService(cashProvider);
-        var cardPayment = new SimulatedCardPaymentProvider();
+        var cardPayment = CreateCardPaymentProvider(settings);
         var qrCodes = new QrCodeService();
         var frameComposer = new FrameCompositionService(templateCatalog, qrCodes, frameOverrides);
 
@@ -113,14 +114,28 @@ public partial class App : Application
 
     private static ICashAcceptorProvider CreateCashAcceptorProvider(SettingsService settings)
     {
+        var allowedBills = settings.CashDenominations;
         if (settings.TestMode)
         {
             Log("CASH_PROVIDER=simulated");
-            return new SimulatedCashAcceptorProvider();
+            return new SimulatedCashAcceptorProvider(allowedBills);
         }
 
         Log($"CASH_PROVIDER=rs232 port={settings.CashCom}");
-        return new Rs232CashAcceptorProvider(settings.CashCom);
+        return new Rs232CashAcceptorProvider(settings.CashCom, allowedBills);
+    }
+
+    private static ICardPaymentProvider CreateCardPaymentProvider(SettingsService settings)
+    {
+        var providerKey = settings.GetValue("CARD_PROVIDER", "simulated");
+        if (string.Equals(providerKey, "stripe_terminal", StringComparison.OrdinalIgnoreCase))
+        {
+            Log("CARD_PROVIDER=stripe_terminal");
+            return new StripeTerminalCardPaymentProvider(settings);
+        }
+
+        Log("CARD_PROVIDER=simulated");
+        return new SimulatedCardPaymentProvider();
     }
 
     public static void Log(string message)
@@ -158,6 +173,13 @@ public partial class App : Application
         }
 
         UpdateInactivityInterval();
+        if (IsTimeoutSuppressedScreen(ResolveScreenKey()))
+        {
+            _inactivityTimer.Stop();
+            SetInactivityDeadline();
+            return;
+        }
+
         _inactivityTimer.Stop();
         _inactivityTimer.Start();
         SetInactivityDeadline();
@@ -206,13 +228,6 @@ public partial class App : Application
             return;
         }
 
-        if (session.IsPaid && session.EndTime is null)
-        {
-            Session?.AppendLog("INACTIVITY_TIMEOUT_IGNORED paid=true");
-            _inactivityTimer?.Start();
-            return;
-        }
-
         var screen = GetCurrentScreen();
         Session?.AppendLog($"INACTIVITY_TIMEOUT screen={screen}");
 
@@ -228,6 +243,32 @@ public partial class App : Application
         if (string.Equals(screen, "error", StringComparison.OrdinalIgnoreCase))
         {
             Session?.AppendLog("INACTIVITY_TIMEOUT_IGNORED error=true");
+            _inactivityTimer?.Start();
+            SetInactivityDeadline();
+            return;
+        }
+
+        if (IsTimeoutSuppressedScreen(screen))
+        {
+            Session?.AppendLog($"INACTIVITY_TIMEOUT_IGNORED screen={screen}");
+            SetInactivityDeadline();
+            return;
+        }
+
+        if (string.Equals(screen, "review", StringComparison.OrdinalIgnoreCase))
+        {
+            if (TryHandleReviewTimeoutAdvance())
+            {
+                _inactivityTimer?.Start();
+                SetInactivityDeadline();
+                return;
+            }
+        }
+
+        var target = GetTimeoutAdvanceTarget(screen);
+        if (!string.IsNullOrWhiteSpace(target))
+        {
+            Navigation?.Navigate(target);
             _inactivityTimer?.Start();
             SetInactivityDeadline();
             return;
@@ -318,6 +359,58 @@ public partial class App : Application
         }
 
         return "unknown";
+    }
+
+    private static bool IsTimeoutSuppressedScreen(string? screen)
+    {
+        if (string.IsNullOrWhiteSpace(screen))
+        {
+            return false;
+        }
+
+        foreach (var suppressed in TimeoutSuppressedScreens)
+        {
+            if (string.Equals(screen, suppressed, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string? GetTimeoutAdvanceTarget(string screen)
+    {
+        if (string.IsNullOrWhiteSpace(screen))
+        {
+            return null;
+        }
+
+        return screen.ToLowerInvariant() switch
+        {
+            "review" => "finalize",
+            "finalize" => "printing",
+            "printing" => "thank_you",
+            "thank_you" => "home",
+            _ => null
+        };
+    }
+
+    private bool TryHandleReviewTimeoutAdvance()
+    {
+        if (Current?.MainWindow?.DataContext is not MainViewModel main)
+        {
+            return false;
+        }
+
+        if (main.CurrentViewModel is not ReviewViewModel review)
+        {
+            return false;
+        }
+
+        review.AutoFillMissingSelections();
+        Navigation?.Navigate("finalize");
+        return true;
     }
 
     private static string FormatLogValue(string? value)

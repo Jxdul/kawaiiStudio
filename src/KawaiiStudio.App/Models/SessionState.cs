@@ -22,7 +22,7 @@ public sealed class SessionState
     public FrameCategory? Category { get; private set; }
     public FrameItem? Frame { get; private set; }
     public bool IsPaid { get; private set; }
-    public int TokensInserted { get; private set; }
+    public decimal CashInserted { get; private set; }
     public decimal PriceTotal { get; private set; }
     public string PaymentStatus { get; private set; } = "Pending";
     public string? PaymentDetail { get; private set; }
@@ -151,14 +151,14 @@ public sealed class SessionState
         PaymentDetail = null;
     }
 
-    public void AddTokens(int tokens)
+    public void AddCash(decimal amount)
     {
-        if (tokens <= 0)
+        if (amount <= 0m)
         {
             return;
         }
 
-        TokensInserted += tokens;
+        CashInserted += amount;
     }
 
     public void SetPriceTotal(decimal total)
@@ -247,7 +247,7 @@ public sealed class SessionState
     private void ResetPayment()
     {
         IsPaid = false;
-        TokensInserted = 0;
+        CashInserted = 0m;
         PriceTotal = 0m;
         PaymentStatus = "Pending";
         PaymentDetail = null;

@@ -53,8 +53,9 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
               <TextBlock Text="Cash" FontSize="18" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding TokenStatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,8,0,0" />
+              <TextBlock Text="{Binding CashStatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,8,0,0" />
               <TextBlock Text="{Binding TotalPriceText}" FontSize="12" Foreground="#8A8A8A" Margin="0,2,0,0" />
+              <TextBlock Text="{Binding CashDenominationsText}" FontSize="12" Foreground="#8A8A8A" Margin="0,2,0,0" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
               <Button Content="$5" Command="{Binding InsertFiveCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
@@ -73,6 +74,20 @@
               <Button Content="Start" Command="{Binding StartCardPaymentCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
               <Button Content="Approve" Command="{Binding ApproveCardPaymentCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
               <Button Content="Decline" Command="{Binding DeclineCardPaymentCommand}" FontSize="16" Padding="14,8" />
+            </StackPanel>
+            <StackPanel Margin="0,12,0,0"
+                        Visibility="{Binding IsCardTestMode, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="Simulator tests" FontSize="12" Foreground="#8A8A8A" Margin="0,0,0,8" />
+              <WrapPanel>
+                <Button Content="Visa" Command="{Binding SimulateVisaCommand}" FontSize="12" Padding="10,6" Margin="0,0,8,8" />
+                <Button Content="Decline" Command="{Binding SimulateDeclinedCommand}" FontSize="12" Padding="10,6" Margin="0,0,8,8" />
+                <Button Content="Insufficient" Command="{Binding SimulateInsufficientFundsCommand}" FontSize="12" Padding="10,6" Margin="0,0,8,8" />
+                <Button Content="Lost card" Command="{Binding SimulateLostCardCommand}" FontSize="12" Padding="10,6" Margin="0,0,8,8" />
+                <Button Content="Stolen card" Command="{Binding SimulateStolenCardCommand}" FontSize="12" Padding="10,6" Margin="0,0,8,8" />
+                <Button Content="Expired" Command="{Binding SimulateExpiredCardCommand}" FontSize="12" Padding="10,6" Margin="0,0,8,8" />
+                <Button Content="Processing error" Command="{Binding SimulateProcessingErrorCommand}" FontSize="12" Padding="10,6" Margin="0,0,8,8" />
+              </WrapPanel>
+              <TextBlock Text="Start payment first, then pick a test card." FontSize="11" Foreground="#8A8A8A" Margin="0,4,0,0" />
             </StackPanel>
           </StackPanel>
         </Border>
