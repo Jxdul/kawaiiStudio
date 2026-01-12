@@ -12,6 +12,16 @@
       </StackPanel>
     </Grid>
     <Button Content="Staff" Command="{Binding StaffCommand}" FontSize="12" Padding="10,4" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Opacity="0.7" />
+    <Border Background="#F2FFFFFF" Padding="10" CornerRadius="8"
+            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16"
+            Visibility="{Binding ShowDeviceStatus, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel>
+        <TextBlock Text="Test Mode Devices" FontSize="12" FontWeight="SemiBold" Foreground="#4A4A4A" />
+        <TextBlock Text="{Binding CameraDeviceStatus, StringFormat=Camera: {0}}" FontSize="11" Foreground="#6A6A6A" />
+        <TextBlock Text="{Binding CashDeviceStatus, StringFormat=Cash: {0}}" FontSize="11" Foreground="#6A6A6A" />
+        <TextBlock Text="{Binding CardDeviceStatus, StringFormat=Card: {0}}" FontSize="11" Foreground="#6A6A6A" />
+      </StackPanel>
+    </Border>
   </Grid>
 </UserControl>
 

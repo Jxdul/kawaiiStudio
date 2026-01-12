@@ -15,7 +15,8 @@ Kiosk-style photobooth app for Windows with a simple customer flow and a frame-d
 - Review selection with slot mapping + composite preview
 - Composite rendering with QR overlay and print-ready output
 - Print preview screen (4x6, with 2x6 duplicated)
-- Cash acceptor RS232 provider (handshake + cash totals) + simulated card flow (test buttons in test mode)
+- Cash acceptor RS232 provider (handshake + cash totals)
+- Stripe Terminal card flow (worker-backed) with simulator buttons in test mode
 - Inactivity handling: home/capture suppressed; post-payment screens auto-advance; review timeout auto-fills
 
 ## Customer flow
@@ -95,6 +96,10 @@ MAX_QUANTITY=8
 CASH_DENOMS=5,10,20
 PrintName=DS-RX1
 cash_COM=COM4
+CARD_PROVIDER=stripe_terminal
+STRIPE_TERMINAL_BASE_URL=https://kawaii-studio-server.daawesomej.workers.dev
+STRIPE_TERMINAL_READER_ID=
+STRIPE_TERMINAL_LOCATION_ID=tml_...
 TEST_MODE=false
 CAMERA_PROVIDER=simulated
 TIMEOUT_DEFAULT=45
@@ -127,12 +132,12 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 
 ## Notes
 
-- The current screens are placeholders for device integrations (camera, printer, payment).
+- Some screens remain placeholders for device integrations (camera, printer).
 - See `specifications.txt` for the full functional spec and acceptance criteria.
 
 ## Remaining work (from `specifications.txt`)
 
-- Finish payment flow: richer cash events (inserted/jam), disable intake after paid, and wire a real card provider.
+- Finish payment flow: richer cash events (inserted/jam), disable intake after paid, and harden card provider errors.
 - Pricing should be per template type (2x6_4slots, 4x6_2slots/4slots/6slots) rather than size-only.
 - Capture needs video recording, robust disconnect handling, and per-screen timer tuning.
 - Upload hooks, QR destination hosting, and print queue integration are not implemented.

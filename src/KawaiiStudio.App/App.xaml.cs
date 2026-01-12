@@ -23,6 +23,9 @@ public partial class App : Application
     public static SettingsService? Settings { get; private set; }
     public static int TimeoutSecondsRemaining { get; private set; }
     public static event Action<int>? TimeoutSecondsChanged;
+    public static string CameraDeviceStatus { get; set; } = "Unknown";
+    public static string CashDeviceStatus { get; set; } = "Unknown";
+    public static string CardDeviceStatus { get; set; } = "Unknown";
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -48,6 +51,7 @@ public partial class App : Application
         var cardPayment = CreateCardPaymentProvider(settings);
         var qrCodes = new QrCodeService();
         var frameComposer = new FrameCompositionService(templateCatalog, qrCodes, frameOverrides);
+        SetDeviceStatusFromProviders(cameraProvider, cashProvider, cardPayment);
 
         EventManager.RegisterClassHandler(typeof(Button), Button.ClickEvent, new RoutedEventHandler(OnAnyButtonClicked));
         InputManager.Current.PreProcessInput += OnPreProcessInput;
@@ -58,7 +62,7 @@ public partial class App : Application
         navigation.Navigated += _ => ResetInactivityTimer();
         var errorViewModel = new ErrorViewModel();
         var startupViewModel = new StartupViewModel(navigation, settings, cameraService, cashAcceptor, errorViewModel, themeCatalog);
-        var homeViewModel = new HomeViewModel(navigation, session, themeCatalog);
+        var homeViewModel = new HomeViewModel(navigation, session, settings, themeCatalog);
         var sizeViewModel = new SizeViewModel(navigation, session, themeCatalog);
         var quantityViewModel = new QuantityViewModel(navigation, session, themeCatalog, settings);
         var layoutViewModel = new LayoutViewModel(navigation, session, themeCatalog);
@@ -136,6 +140,16 @@ public partial class App : Application
 
         Log("CARD_PROVIDER=simulated");
         return new SimulatedCardPaymentProvider();
+    }
+
+    private static void SetDeviceStatusFromProviders(
+        ICameraProvider cameraProvider,
+        ICashAcceptorProvider cashProvider,
+        ICardPaymentProvider cardPaymentProvider)
+    {
+        CameraDeviceStatus = cameraProvider is SimulatedCameraProvider ? "Simulated" : "Real";
+        CashDeviceStatus = cashProvider is SimulatedCashAcceptorProvider ? "Simulated" : "Real";
+        CardDeviceStatus = cardPaymentProvider is SimulatedCardPaymentProvider ? "Simulated" : "Real";
     }
 
     public static void Log(string message)

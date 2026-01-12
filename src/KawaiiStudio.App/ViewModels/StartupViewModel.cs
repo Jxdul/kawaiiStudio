@@ -184,6 +184,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
             if (realAttempt.ok)
             {
+                KawaiiStudio.App.App.CameraDeviceStatus = "Real";
                 item.SetStatus("Connected", "Test mode", true);
                 KawaiiStudio.App.App.Log("STARTUP_CAMERA_OK test_mode=true");
                 return true;
@@ -214,6 +215,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
             if (simulatedAttempt.ok)
             {
+                KawaiiStudio.App.App.CameraDeviceStatus = "Simulated";
                 item.SetStatus("Simulated", "Camera unavailable", true);
                 return true;
             }
@@ -241,6 +243,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
         if (realAttemptNonTest.ok)
         {
+            KawaiiStudio.App.App.CameraDeviceStatus = "Real";
             item.SetStatus("Connected", string.Empty, true);
             KawaiiStudio.App.App.Log("STARTUP_CAMERA_OK");
             return true;
@@ -286,28 +289,76 @@ public sealed class StartupViewModel : ScreenViewModelBase
         var item = Checks[1];
         item.SetStatus("Checking...", string.Empty, false);
 
-        _cashAcceptor.UseProvider(CreateCashProvider(testMode));
-        var cashAttempt = await RunCheckWithTimeout(_cashAcceptor.ConnectAsync, DeviceCheckTimeout, token);
+        if (testMode)
+        {
+            var allowedBills = _settings.CashDenominations;
+            KawaiiStudio.App.App.Log("STARTUP_CASH_CHECK test_mode=true");
+
+            var realProvider = new Rs232CashAcceptorProvider(_settings.CashCom, allowedBills);
+            var realAttempt = await TryCashProviderAsync(realProvider, token);
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            if (realAttempt.ok)
+            {
+                KawaiiStudio.App.App.CashDeviceStatus = "Real";
+                item.SetStatus("Connected", $"{_settings.CashCom} (test mode)", true);
+                KawaiiStudio.App.App.Log("STARTUP_CASH_OK test_mode=true provider=rs232");
+                return true;
+            }
+
+            if (realAttempt.timedOut)
+            {
+                KawaiiStudio.App.App.Log("STARTUP_CASH_RS232_TIMEOUT test_mode=true");
+            }
+            else
+            {
+                KawaiiStudio.App.App.Log("STARTUP_CASH_RS232_FAILED test_mode=true");
+            }
+
+            KawaiiStudio.App.App.Log("STARTUP_CASH_FALLBACK simulated");
+            var simulatedProvider = new SimulatedCashAcceptorProvider(allowedBills);
+            var simulatedAttempt = await TryCashProviderAsync(simulatedProvider, token);
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            if (simulatedAttempt.ok)
+            {
+                KawaiiStudio.App.App.CashDeviceStatus = "Simulated";
+                item.SetStatus("Simulated", "Fallback (test mode)", true);
+                KawaiiStudio.App.App.Log("STARTUP_CASH_SIMULATED");
+                return true;
+            }
+
+            if (simulatedAttempt.timedOut)
+            {
+                item.SetStatus("Failed", "Timeout", false);
+                KawaiiStudio.App.App.Log("STARTUP_CASH_TIMEOUT");
+            }
+            else
+            {
+                item.SetStatus("Failed", "Cash reader not connected", false);
+                KawaiiStudio.App.App.Log("STARTUP_CASH_FAILED");
+            }
+
+            return false;
+        }
+
+        var cashAttempt = await TryCashProviderAsync(CreateCashProvider(false), token);
         if (token.IsCancellationRequested)
         {
             return false;
         }
 
-        try
-        {
-            await _cashAcceptor.DisconnectAsync(token);
-        }
-        catch
-        {
-            // Ignore disconnect errors during startup checks.
-        }
-
         if (cashAttempt.ok)
         {
-            var status = testMode ? "Simulated" : "Connected";
-            var detail = testMode ? "Test mode" : _settings.CashCom;
-            item.SetStatus(status, detail, true);
-            KawaiiStudio.App.App.Log(testMode ? "STARTUP_CASH_SIMULATED" : "STARTUP_CASH_OK");
+            KawaiiStudio.App.App.CashDeviceStatus = "Real";
+            item.SetStatus("Connected", _settings.CashCom, true);
+            KawaiiStudio.App.App.Log("STARTUP_CASH_OK");
             return true;
         }
 
@@ -331,6 +382,29 @@ public sealed class StartupViewModel : ScreenViewModelBase
         return testMode
             ? new SimulatedCashAcceptorProvider(allowedBills)
             : new Rs232CashAcceptorProvider(_settings.CashCom, allowedBills);
+    }
+
+    private async Task<(bool ok, bool timedOut)> TryCashProviderAsync(
+        ICashAcceptorProvider provider,
+        CancellationToken token)
+    {
+        _cashAcceptor.UseProvider(provider);
+        var attempt = await RunCheckWithTimeout(_cashAcceptor.ConnectAsync, DeviceCheckTimeout, token);
+        if (token.IsCancellationRequested)
+        {
+            return (false, false);
+        }
+
+        try
+        {
+            await _cashAcceptor.DisconnectAsync(token);
+        }
+        catch
+        {
+            // Ignore disconnect errors during startup checks.
+        }
+
+        return attempt;
     }
 
     private static Task<bool> CheckPlaceholderAsync(

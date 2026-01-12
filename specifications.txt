@@ -1,7 +1,7 @@
 # Photobooth App — Product Requirements & Technical Specification (v0.1)
 
 **Owner:** Jadyl
-**Last updated:** January 11, 2026
+**Last updated:** January 12, 2026
 **Status:** Draft (build-ready spec)
 
 ---
@@ -42,7 +42,7 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 * Frame scanning from folders (categories + templates).
 * Template editor for slot/QR placement (per template + per frame overrides).
 * Cash payment via **serial bill acceptor** (RS232 protocol).
-* Card payment: **placeholder architecture** with simulated provider (implementation TBD).
+* Card payment: Stripe Terminal integration (worker-backed) with simulator flows in test mode.
 * Canon camera integration via **Canon SDK/API**.
 * Continuous video recording during session capture.
 * Composite image generation + QR overlay.
@@ -79,7 +79,7 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 
 ### Optional / future
 
-* **Card payment** device/API (unknown; must be swappable)
+* **Card payment** device/API (Stripe Terminal via Cloudflare Worker; swappable)
 * **Network upload** target (local server, NAS, cloud bucket, etc.)
 
 ---
@@ -227,7 +227,7 @@ UI:
 * Payment method options:
 
   * **Cash**
-  * **Card** (disabled or “Coming soon” unless enabled in config)
+  * **Card** (Stripe Terminal when enabled in config)
 * Price summary (size, style, quantity)
 * “Cancel” (before payment confirmation only)
 
@@ -236,6 +236,7 @@ Rules:
 * Cash: accumulate accepted value until total >= price.
 * Cash denominations are configured via CASH_DENOMS in appconfig.ini (current build).
 * Must log bill acceptor events (insert/reject/jam/accepted).
+* Card: Stripe Terminal via worker base URL; test mode enables simulator outcomes.
 * On success: mark session as **Paid** and proceed to Capture.
 * After Paid: disallow returning to earlier screens (unless staff override).
 
@@ -609,6 +610,7 @@ Minimum fields:
 ## 15) Configuration Files (Recommended)
 
 Current build uses `Config/appconfig.ini` (INI) for pricing, timeouts, cash denominations, and hardware settings.
+Card payments are configured there as well (CARD_PROVIDER=stripe_terminal, STRIPE_TERMINAL_BASE_URL, STRIPE_TERMINAL_LOCATION_ID, STRIPE_TERMINAL_READER_ID).
 JSON configs below are the long-term target.
 
 ### `config/app.json` (example)
@@ -677,6 +679,8 @@ To keep card payments and devices swappable, implement providers:
 
   * `UploadImage()`, `UploadVideo()`, returns `qrUrl/token`
 
+Current implementation uses `ICardPaymentProvider` and `ICashAcceptorProvider` for payment devices, with Stripe Terminal backed by a worker service.
+
 ---
 
 ## 17) Acceptance Criteria (MVP “Done” Checklist)
@@ -693,6 +697,7 @@ To keep card payments and devices swappable, implement providers:
 
 * [ ] Cash acceptor logs inserted/accepted/rejected/jam events
 * [ ] Payment gating works: capture only starts after payment success
+* [x] Stripe Terminal test flow works via worker + simulator buttons
 * [ ] Canon capture reliably produces 8 images
 * [ ] Video recorded during capture and tied to session
 * [ ] DNP print job submitted and tracked
