@@ -292,21 +292,22 @@ public sealed class StaffViewModel : ScreenViewModelBase
     {
         return new[]
         {
-            ("TIMEOUT_STARTUP", "Startup timeout (sec)", "45"),
-            ("TIMEOUT_HOME", "Home timeout (sec)", "45"),
-            ("TIMEOUT_SIZE", "Size timeout (sec)", "45"),
-            ("TIMEOUT_QUANTITY", "Quantity timeout (sec)", "45"),
-            ("TIMEOUT_LAYOUT", "Layout timeout (sec)", "45"),
-            ("TIMEOUT_CATEGORY", "Category timeout (sec)", "45"),
-            ("TIMEOUT_FRAME", "Frame timeout (sec)", "45"),
-            ("TIMEOUT_PAYMENT", "Payment timeout (sec)", "45"),
-            ("TIMEOUT_CAPTURE", "Capture timeout (sec)", "45"),
-            ("TIMEOUT_REVIEW", "Review timeout (sec)", "45"),
-            ("TIMEOUT_FINALIZE", "Finalize timeout (sec)", "45"),
-            ("TIMEOUT_PRINTING", "Printing timeout (sec)", "45"),
-            ("TIMEOUT_THANK_YOU", "Thank you timeout (sec)", "45"),
-            ("TIMEOUT_LIBRARY", "Library timeout (sec)", "45"),
-            ("TIMEOUT_STAFF", "Staff timeout (sec)", "45")
+            ("TIMEOUT_STARTUP", "Startup timeout (sec)", "30"),
+            ("TIMEOUT_HOME", "Home timeout (sec)", "30"),
+            ("TIMEOUT_SIZE", "Size timeout (sec)", "30"),
+            ("TIMEOUT_QUANTITY", "Quantity timeout (sec)", "30"),
+            ("TIMEOUT_LAYOUT", "Layout timeout (sec)", "30"),
+            ("TIMEOUT_CATEGORY", "Category timeout (sec)", "30"),
+            ("TIMEOUT_FRAME", "Frame timeout (sec)", "30"),
+            ("TIMEOUT_PAYMENT", "Payment timeout (sec)", "30"),
+            ("TIMEOUT_CAPTURE", "Capture timeout (sec)", "30"),
+            ("TIMEOUT_REVIEW", "Review timeout (sec)", "30"),
+            ("TIMEOUT_FINALIZE", "Finalize timeout (sec)", "30"),
+            ("TIMEOUT_PRINTING", "Printing timeout (sec)", "30"),
+            ("TIMEOUT_THANK_YOU", "Thank you timeout (sec)", "30"),
+            ("TIMEOUT_LIBRARY", "Library timeout (sec)", "30"),
+            ("TIMEOUT_STAFF", "Staff timeout (sec)", "30"),
+            ("CAMERA_TIMER_SECONDS", "Camera timer (sec)", "3")
         };
     }
 }

@@ -97,7 +97,10 @@ public sealed class SimulatedCameraProvider : ICameraProvider
 
     private static void SavePlaceholderImage(string path, BitmapSource image)
     {
-        var encoder = new PngBitmapEncoder();
+        var encoder = new JpegBitmapEncoder
+        {
+            QualityLevel = 90
+        };
         encoder.Frames.Add(BitmapFrame.Create(image));
         using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
         encoder.Save(stream);

@@ -9,7 +9,7 @@
     <conv:FilePathToImageSourceConverter x:Key="FilePathToImage" />
 
     <Style TargetType="Window">
-      <Setter Property="TextElement.Foreground" Value="#F2F2F2" />
+      <Setter Property="TextElement.Foreground" Value="#2B2620" />
     </Style>
     <Style TargetType="Button">
       <Setter Property="Padding" Value="16,8" />

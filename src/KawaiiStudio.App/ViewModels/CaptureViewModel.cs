@@ -13,23 +13,25 @@ namespace KawaiiStudio.App.ViewModels;
 public sealed class CaptureViewModel : ScreenViewModelBase
 {
     private const int ShotCount = 8;
-    private const int CountdownSeconds = 3;
-    private const int SecondsBetweenShots = 4;
+    private const int MaxCountdownSeconds = 30;
+    private static readonly TimeSpan LiveViewInterval = TimeSpan.FromMilliseconds(33);
     private static readonly TimeSpan PreviewFrameInterval = TimeSpan.FromSeconds(1);
 
     private readonly NavigationService _navigation;
     private readonly SessionService _session;
     private readonly ICameraProvider _camera;
+    private readonly SettingsService _settings;
     private readonly RelayCommand _continueCommand;
     private DispatcherTimer? _liveViewTimer;
     private CancellationTokenSource? _liveViewCts;
     private CancellationTokenSource? _captureCts;
     private int _previewFrameIndex;
     private DateTime _lastPreviewFrameUtc = DateTime.MinValue;
+    private DateTime _suspendLiveViewUntilUtc = DateTime.MinValue;
     private int _previewSaveInProgress;
     private bool _isLiveViewTicking;
-    private bool _isCapturingShot;
     private bool _isCapturing;
+    private int _countdownSecondsRemaining;
     private string _statusText = "Ready to capture 8 photos";
     private string _progressText = "Shots: 0 / 8";
     private string _buttonText = "Start Capture";
@@ -39,12 +41,14 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         NavigationService navigation,
         SessionService session,
         ICameraProvider camera,
+        SettingsService settings,
         ThemeCatalogService themeCatalog)
         : base(themeCatalog, "capture")
     {
         _navigation = navigation;
         _session = session;
         _camera = camera;
+        _settings = settings;
         _continueCommand = new RelayCommand(StartCapture, () => !_isCapturing);
         ContinueCommand = _continueCommand;
         BackCommand = new RelayCommand(NavigateBack);
@@ -104,6 +108,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
     {
         _captureCts?.Cancel();
         _isCapturing = false;
+        SetCountdown(0);
         StatusText = "Ready to capture 8 photos";
         ProgressText = "Shots: 0 / 8";
         CaptureButtonText = "Start Capture";
@@ -133,7 +138,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
 
         _liveViewTimer ??= new DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(250)
+            Interval = LiveViewInterval
         };
         _liveViewTimer.Tick -= OnLiveViewTick;
         _liveViewTimer.Tick += OnLiveViewTick;
@@ -142,7 +147,12 @@ public sealed class CaptureViewModel : ScreenViewModelBase
 
     private async void OnLiveViewTick(object? sender, EventArgs e)
     {
-        if (_isLiveViewTicking || _isCapturingShot || _liveViewCts is null)
+        if (_isLiveViewTicking || _liveViewCts is null)
+        {
+            return;
+        }
+
+        if (DateTime.UtcNow < _suspendLiveViewUntilUtc)
         {
             return;
         }
@@ -202,7 +212,8 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         _captureCts = new CancellationTokenSource();
         var token = _captureCts.Token;
 
-        KawaiiStudio.App.App.Log($"CAPTURE_SEQUENCE_START shots={ShotCount} countdown={CountdownSeconds} interval={SecondsBetweenShots}");
+        var countdownSeconds = GetCameraTimerSeconds();
+        KawaiiStudio.App.App.Log($"CAPTURE_SEQUENCE_START shots={ShotCount} countdown={countdownSeconds} interval={countdownSeconds}");
 
         try
         {
@@ -217,13 +228,21 @@ public sealed class CaptureViewModel : ScreenViewModelBase
                 }
             }
 
+            var photosFolder = _session.Current.PhotosFolder;
+            if (!string.IsNullOrWhiteSpace(photosFolder))
+            {
+                Directory.CreateDirectory(photosFolder);
+            }
+
             StartLiveView();
-            for (var remaining = CountdownSeconds; remaining > 0; remaining--)
+            for (var remaining = countdownSeconds; remaining > 0; remaining--)
             {
                 token.ThrowIfCancellationRequested();
+                SetCountdown(remaining);
                 StatusText = $"Starting in {remaining}...";
                 await Task.Delay(TimeSpan.FromSeconds(1), token);
             }
+            SetCountdown(0);
 
             for (var shotIndex = 1; shotIndex <= ShotCount; shotIndex++)
             {
@@ -234,13 +253,20 @@ public sealed class CaptureViewModel : ScreenViewModelBase
                 var path = BuildShotPath(shotIndex);
                 if (!string.IsNullOrWhiteSpace(path))
                 {
-                    _isCapturingShot = true;
+                    SuspendLiveView(TimeSpan.FromMilliseconds(500));
                     var captured = await _camera.CapturePhotoAsync(path, token);
-                    _isCapturingShot = false;
                     if (captured)
                     {
-                        _session.RegisterCapturedPhoto(path);
-                        KawaiiStudio.App.App.Log($"CAPTURE_SHOT index={shotIndex} file={Path.GetFileName(path)}");
+                        var resolvedPath = ResolveCapturedPath(path);
+                        if (!string.IsNullOrWhiteSpace(resolvedPath))
+                        {
+                            _session.RegisterCapturedPhoto(resolvedPath);
+                            KawaiiStudio.App.App.Log($"CAPTURE_SHOT index={shotIndex} file={Path.GetFileName(resolvedPath)}");
+                        }
+                        else
+                        {
+                            KawaiiStudio.App.App.Log($"CAPTURE_SHOT_MISSING index={shotIndex} file={Path.GetFileName(path)}");
+                        }
                     }
                     else
                     {
@@ -254,7 +280,15 @@ public sealed class CaptureViewModel : ScreenViewModelBase
 
                 if (shotIndex < ShotCount)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(SecondsBetweenShots), token);
+                    for (var remaining = countdownSeconds; remaining > 0; remaining--)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        SetCountdown(remaining);
+                        StatusText = $"Next shot in {remaining}...";
+                        await Task.Delay(TimeSpan.FromSeconds(1), token);
+                    }
+
+                    SetCountdown(0);
                 }
             }
 
@@ -270,8 +304,8 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         }
         finally
         {
-            _isCapturingShot = false;
             _isCapturing = false;
+            SetCountdown(0);
             _continueCommand.RaiseCanExecuteChanged();
         }
     }
@@ -285,7 +319,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         }
 
         var sessionId = string.IsNullOrWhiteSpace(_session.Current.SessionId) ? "session" : _session.Current.SessionId;
-        var fileName = $"{sessionId}_shot_{shotIndex:00}.png";
+        var fileName = $"{sessionId}_shot_{shotIndex:00}.jpg";
         return Path.Combine(photosFolder, fileName);
     }
 
@@ -299,6 +333,44 @@ public sealed class CaptureViewModel : ScreenViewModelBase
     {
         _previewFrameIndex = 0;
         _lastPreviewFrameUtc = DateTime.MinValue;
+        _suspendLiveViewUntilUtc = DateTime.MinValue;
+    }
+
+    private void SuspendLiveView(TimeSpan duration)
+    {
+        var until = DateTime.UtcNow.Add(duration);
+        if (until > _suspendLiveViewUntilUtc)
+        {
+            _suspendLiveViewUntilUtc = until;
+        }
+    }
+
+    private static string? ResolveCapturedPath(string path)
+    {
+        if (File.Exists(path))
+        {
+            return path;
+        }
+
+        var folder = Path.GetDirectoryName(path);
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+        {
+            return null;
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(path);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            return null;
+        }
+
+        var matches = Directory.GetFiles(folder, $"{baseName}.*");
+        if (matches.Length == 0)
+        {
+            return null;
+        }
+
+        return matches[0];
     }
 
     private void QueuePreviewFrameSave(BitmapSource frame)
@@ -348,5 +420,37 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         encoder.Frames.Add(BitmapFrame.Create(frame));
         using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
         encoder.Save(stream);
+    }
+
+    public string CountdownText => _countdownSecondsRemaining > 0 ? _countdownSecondsRemaining.ToString() : string.Empty;
+
+    public bool IsCountdownActive => _countdownSecondsRemaining > 0;
+
+    private void SetCountdown(int remainingSeconds)
+    {
+        if (_countdownSecondsRemaining == remainingSeconds)
+        {
+            return;
+        }
+
+        _countdownSecondsRemaining = remainingSeconds;
+        OnPropertyChanged(nameof(CountdownText));
+        OnPropertyChanged(nameof(IsCountdownActive));
+    }
+
+    private int GetCameraTimerSeconds()
+    {
+        var seconds = _settings.CameraTimerSeconds;
+        if (seconds < 0)
+        {
+            return 0;
+        }
+
+        if (seconds > MaxCountdownSeconds)
+        {
+            return MaxCountdownSeconds;
+        }
+
+        return seconds == 0 ? 0 : seconds;
     }
 }

@@ -8,6 +8,7 @@ namespace KawaiiStudio.App.ViewModels;
 
 public sealed class StartupViewModel : ScreenViewModelBase
 {
+    private static readonly System.TimeSpan DeviceCheckTimeout = System.TimeSpan.FromSeconds(5);
     private readonly NavigationService _navigation;
     private readonly SettingsService _settings;
     private readonly CameraService _camera;
@@ -15,10 +16,12 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private readonly ErrorViewModel _errorViewModel;
     private readonly RelayCommand _retryCommand;
     private readonly RelayCommand _continueCommand;
+    private readonly RelayCommand _forceContinueCommand;
     private readonly RelayCommand _enableTestModeCommand;
     private CancellationTokenSource? _cts;
     private bool _isChecking;
     private bool _canContinue;
+    private bool _hasErrors;
     private string _modeText = "Test Mode: Off";
 
     public StartupViewModel(
@@ -40,6 +43,8 @@ public sealed class StartupViewModel : ScreenViewModelBase
         RetryCommand = _retryCommand;
         _continueCommand = new RelayCommand(Continue, () => _canContinue);
         ContinueCommand = _continueCommand;
+        _forceContinueCommand = new RelayCommand(ForceContinue, () => CanForceContinue);
+        ForceContinueCommand = _forceContinueCommand;
         _enableTestModeCommand = new RelayCommand(EnableTestMode);
         EnableTestModeCommand = _enableTestModeCommand;
     }
@@ -48,7 +53,10 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
     public ICommand RetryCommand { get; }
     public ICommand ContinueCommand { get; }
+    public ICommand ForceContinueCommand { get; }
     public ICommand EnableTestModeCommand { get; }
+
+    public bool CanForceContinue => !_isChecking && _hasErrors;
 
     public string ModeText
     {
@@ -78,10 +86,10 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
         _isChecking = true;
         _retryCommand.RaiseCanExecuteChanged();
-        UpdateCanContinue(false);
+        UpdateCanContinue(false, hasErrors: false);
 
         EnsureChecks();
-        SetAllStatus("Checking...", string.Empty, isOk: false);
+        ResetStatuses();
 
         _settings.Reload();
         var testMode = _settings.TestMode;
@@ -111,12 +119,15 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
 
         var allOk = cashOk && serverOk;
-        UpdateCanContinue(allOk);
+        var hasErrors = !(cameraOk && cashOk && serverOk);
+        UpdateCanContinue(allOk && !hasErrors, hasErrors);
 
         _isChecking = false;
         _retryCommand.RaiseCanExecuteChanged();
+        _forceContinueCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(CanForceContinue));
 
-        if (allOk)
+        if (allOk && !hasErrors)
         {
             _navigation.Navigate("home");
         }
@@ -142,6 +153,14 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
     }
 
+    private void ResetStatuses()
+    {
+        foreach (var item in Checks)
+        {
+            item.SetStatus("Pending", string.Empty, false);
+        }
+    }
+
     private async Task<bool> CheckCameraAsync(bool testMode, CancellationToken token)
     {
         if (token.IsCancellationRequested)
@@ -150,55 +169,93 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
 
         var item = Checks[0];
+        _camera.UseProvider(CreateCameraProvider());
         if (testMode)
         {
-            _camera.UseProvider(new SimulatedCameraProvider());
-            var simulated = await _camera.ConnectAsync(token);
+            item.SetStatus("Checking...", "Test mode", false);
+            KawaiiStudio.App.App.Log("STARTUP_CAMERA_CHECK test_mode=true");
+
+            var deadline = System.DateTime.UtcNow + DeviceCheckTimeout;
+            var realAttempt = await RunCheckWithTimeout(_camera.ConnectAsync, DeviceCheckTimeout, token);
             if (token.IsCancellationRequested)
             {
                 return false;
             }
 
-            item.SetStatus("Simulated", "Test mode", simulated);
-            KawaiiStudio.App.App.Log("STARTUP_CAMERA_SIMULATED");
-            return simulated;
+            if (realAttempt.ok)
+            {
+                item.SetStatus("Connected", "Test mode", true);
+                KawaiiStudio.App.App.Log("STARTUP_CAMERA_OK test_mode=true");
+                return true;
+            }
+
+            if (realAttempt.timedOut)
+            {
+                item.SetStatus("Failed", "Timeout", false);
+                KawaiiStudio.App.App.Log("STARTUP_CAMERA_TIMEOUT");
+                return false;
+            }
+
+            KawaiiStudio.App.App.Log("STARTUP_CAMERA_FALLBACK simulated");
+            _camera.UseProvider(new SimulatedCameraProvider());
+            var remaining = deadline - System.DateTime.UtcNow;
+            if (remaining <= System.TimeSpan.Zero)
+            {
+                item.SetStatus("Failed", "Timeout", false);
+                KawaiiStudio.App.App.Log("STARTUP_CAMERA_TIMEOUT");
+                return false;
+            }
+
+            var simulatedAttempt = await RunCheckWithTimeout(_camera.ConnectAsync, remaining, token);
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            if (simulatedAttempt.ok)
+            {
+                item.SetStatus("Simulated", "Camera unavailable", true);
+                return true;
+            }
+
+            if (simulatedAttempt.timedOut)
+            {
+                item.SetStatus("Failed", "Timeout", false);
+                KawaiiStudio.App.App.Log("STARTUP_CAMERA_TIMEOUT");
+                return false;
+            }
+
+            item.SetStatus("Failed", "Camera not connected", false);
+            KawaiiStudio.App.App.Log("STARTUP_CAMERA_FAILED");
+            return false;
         }
 
-        item.SetStatus("Connecting...", string.Empty, false);
+        item.SetStatus("Checking...", string.Empty, false);
         KawaiiStudio.App.App.Log("STARTUP_CAMERA_CHECK");
 
-        var connected = await _camera.ConnectAsync(token);
+        var realAttemptNonTest = await RunCheckWithTimeout(_camera.ConnectAsync, DeviceCheckTimeout, token);
         if (token.IsCancellationRequested)
         {
             return false;
         }
 
-        if (connected)
+        if (realAttemptNonTest.ok)
         {
             item.SetStatus("Connected", string.Empty, true);
             KawaiiStudio.App.App.Log("STARTUP_CAMERA_OK");
             return true;
         }
 
-        if (testMode)
+        if (realAttemptNonTest.timedOut)
         {
-            KawaiiStudio.App.App.Log("STARTUP_CAMERA_FALLBACK simulated");
-            _camera.UseProvider(new SimulatedCameraProvider());
-            var simulated = await _camera.ConnectAsync(token);
-            if (token.IsCancellationRequested)
-            {
-                return false;
-            }
-
-            if (simulated)
-            {
-                item.SetStatus("Simulated", "Camera unavailable", true);
-                return true;
-            }
+            item.SetStatus("Failed", "Timeout", false);
+            KawaiiStudio.App.App.Log("STARTUP_CAMERA_TIMEOUT");
         }
-
-        item.SetStatus("Failed", "Camera not connected", false);
-        KawaiiStudio.App.App.Log("STARTUP_CAMERA_FAILED");
+        else
+        {
+            item.SetStatus("Failed", "Camera not connected", false);
+            KawaiiStudio.App.App.Log("STARTUP_CAMERA_FAILED");
+        }
 
         if (!testMode && !token.IsCancellationRequested)
         {
@@ -206,6 +263,17 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
 
         return false;
+    }
+
+    private ICameraProvider CreateCameraProvider()
+    {
+        var providerKey = _settings.GetValue("CAMERA_PROVIDER", "simulated");
+        if (string.Equals(providerKey, "canon", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return new CanonSdkCameraProvider();
+        }
+
+        return new SimulatedCameraProvider();
     }
 
     private async Task<bool> CheckCashAsync(bool testMode, CancellationToken token)
@@ -216,14 +284,15 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
 
         var item = Checks[1];
-        item.SetStatus("Connecting...", string.Empty, false);
+        item.SetStatus("Checking...", string.Empty, false);
 
         _cashAcceptor.UseProvider(CreateCashProvider(testMode));
-        var connected = await _cashAcceptor.ConnectAsync(token);
+        var cashAttempt = await RunCheckWithTimeout(_cashAcceptor.ConnectAsync, DeviceCheckTimeout, token);
         if (token.IsCancellationRequested)
         {
             return false;
         }
+
         try
         {
             await _cashAcceptor.DisconnectAsync(token);
@@ -233,7 +302,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             // Ignore disconnect errors during startup checks.
         }
 
-        if (connected)
+        if (cashAttempt.ok)
         {
             var status = testMode ? "Simulated" : "Connected";
             var detail = testMode ? "Test mode" : _settings.CashCom;
@@ -242,8 +311,17 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return true;
         }
 
-        item.SetStatus("Failed", "Cash reader not connected", false);
-        KawaiiStudio.App.App.Log("STARTUP_CASH_FAILED");
+        if (cashAttempt.timedOut)
+        {
+            item.SetStatus("Failed", "Timeout", false);
+            KawaiiStudio.App.App.Log("STARTUP_CASH_TIMEOUT");
+        }
+        else
+        {
+            item.SetStatus("Failed", "Cash reader not connected", false);
+            KawaiiStudio.App.App.Log("STARTUP_CASH_FAILED");
+        }
+
         return false;
     }
 
@@ -273,14 +351,28 @@ public sealed class StartupViewModel : ScreenViewModelBase
         return Task.FromResult(true);
     }
 
-    private void UpdateCanContinue(bool canContinue)
+    private void UpdateCanContinue(bool canContinue, bool hasErrors)
     {
         _canContinue = canContinue;
+        _hasErrors = hasErrors;
         _continueCommand.RaiseCanExecuteChanged();
+        _forceContinueCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(CanForceContinue));
     }
 
     private void Continue()
     {
+        _navigation.Navigate("home");
+    }
+
+    private void ForceContinue()
+    {
+        if (!CanForceContinue)
+        {
+            return;
+        }
+
+        KawaiiStudio.App.App.Log("STARTUP_FORCE_CONTINUE");
         _navigation.Navigate("home");
     }
 
@@ -290,6 +382,48 @@ public sealed class StartupViewModel : ScreenViewModelBase
         _settings.Save();
         KawaiiStudio.App.App.Log("STARTUP_ENABLE_TEST_MODE");
         StartChecks();
+    }
+
+    private static async Task<(bool ok, bool timedOut)> RunCheckWithTimeout(
+        Func<CancellationToken, Task<bool>> action,
+        System.TimeSpan timeout,
+        CancellationToken token)
+    {
+        if (timeout <= System.TimeSpan.Zero)
+        {
+            return (false, true);
+        }
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        timeoutCts.CancelAfter(timeout);
+
+        try
+        {
+            var task = action(timeoutCts.Token);
+            var completed = await Task.WhenAny(task, Task.Delay(timeout, token));
+            if (completed == task)
+            {
+                return (await task, false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            if (token.IsCancellationRequested)
+            {
+                return (false, false);
+            }
+        }
+        catch
+        {
+            return (false, false);
+        }
+
+        if (token.IsCancellationRequested)
+        {
+            return (false, false);
+        }
+
+        return (false, true);
     }
 }
 

@@ -9,7 +9,7 @@ namespace KawaiiStudio.App.Services;
 
 public sealed class SettingsService
 {
-    private const int DefaultTimeoutSeconds = 45;
+    private const int DefaultTimeoutSeconds = 30;
 
     private readonly string _settingsPath;
     private readonly Dictionary<string, string> _values = new(StringComparer.OrdinalIgnoreCase);
@@ -25,6 +25,7 @@ public sealed class SettingsService
     public string PrintName => GetString("PrintName", "DS-RX1");
     public string CashCom => GetString("cash_COM", "COM4");
     public int DefaultTimeout => GetInt("TIMEOUT_DEFAULT", DefaultTimeoutSeconds);
+    public int CameraTimerSeconds => GetInt("CAMERA_TIMER_SECONDS", 3);
     public bool TestMode => GetBool("TEST_MODE", false);
 
     public string GetValue(string key, string fallback = "")
@@ -223,21 +224,22 @@ public sealed class SettingsService
         _values["CAMERA_PROVIDER"] = "simulated";
         _values["TEST_MODE"] = "false";
         _values["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
-        _values["TIMEOUT_STARTUP"] = "45";
-        _values["TIMEOUT_HOME"] = "45";
-        _values["TIMEOUT_SIZE"] = "45";
-        _values["TIMEOUT_QUANTITY"] = "45";
-        _values["TIMEOUT_LAYOUT"] = "45";
-        _values["TIMEOUT_CATEGORY"] = "45";
-        _values["TIMEOUT_FRAME"] = "45";
-        _values["TIMEOUT_PAYMENT"] = "45";
-        _values["TIMEOUT_CAPTURE"] = "45";
-        _values["TIMEOUT_REVIEW"] = "45";
-        _values["TIMEOUT_FINALIZE"] = "45";
-        _values["TIMEOUT_PRINTING"] = "45";
-        _values["TIMEOUT_THANK_YOU"] = "45";
-        _values["TIMEOUT_LIBRARY"] = "45";
-        _values["TIMEOUT_STAFF"] = "45";
+        _values["TIMEOUT_STARTUP"] = "30";
+        _values["TIMEOUT_HOME"] = "30";
+        _values["TIMEOUT_SIZE"] = "30";
+        _values["TIMEOUT_QUANTITY"] = "30";
+        _values["TIMEOUT_LAYOUT"] = "30";
+        _values["TIMEOUT_CATEGORY"] = "30";
+        _values["TIMEOUT_FRAME"] = "30";
+        _values["TIMEOUT_PAYMENT"] = "30";
+        _values["TIMEOUT_CAPTURE"] = "30";
+        _values["TIMEOUT_REVIEW"] = "30";
+        _values["TIMEOUT_FINALIZE"] = "30";
+        _values["TIMEOUT_PRINTING"] = "30";
+        _values["TIMEOUT_THANK_YOU"] = "30";
+        _values["TIMEOUT_LIBRARY"] = "30";
+        _values["TIMEOUT_STAFF"] = "30";
+        _values["CAMERA_TIMER_SECONDS"] = "3";
     }
 
     private void EnsureDefaults()
@@ -267,21 +269,22 @@ public sealed class SettingsService
             ["CAMERA_PROVIDER"] = "simulated",
             ["TEST_MODE"] = "false",
             ["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture),
-            ["TIMEOUT_STARTUP"] = "45",
-            ["TIMEOUT_HOME"] = "45",
-            ["TIMEOUT_SIZE"] = "45",
-            ["TIMEOUT_QUANTITY"] = "45",
-            ["TIMEOUT_LAYOUT"] = "45",
-            ["TIMEOUT_CATEGORY"] = "45",
-            ["TIMEOUT_FRAME"] = "45",
-            ["TIMEOUT_PAYMENT"] = "45",
-            ["TIMEOUT_CAPTURE"] = "45",
-            ["TIMEOUT_REVIEW"] = "45",
-            ["TIMEOUT_FINALIZE"] = "45",
-            ["TIMEOUT_PRINTING"] = "45",
-            ["TIMEOUT_THANK_YOU"] = "45",
-            ["TIMEOUT_LIBRARY"] = "45",
-            ["TIMEOUT_STAFF"] = "45"
+            ["TIMEOUT_STARTUP"] = "30",
+            ["TIMEOUT_HOME"] = "30",
+            ["TIMEOUT_SIZE"] = "30",
+            ["TIMEOUT_QUANTITY"] = "30",
+            ["TIMEOUT_LAYOUT"] = "30",
+            ["TIMEOUT_CATEGORY"] = "30",
+            ["TIMEOUT_FRAME"] = "30",
+            ["TIMEOUT_PAYMENT"] = "30",
+            ["TIMEOUT_CAPTURE"] = "30",
+            ["TIMEOUT_REVIEW"] = "30",
+            ["TIMEOUT_FINALIZE"] = "30",
+            ["TIMEOUT_PRINTING"] = "30",
+            ["TIMEOUT_THANK_YOU"] = "30",
+            ["TIMEOUT_LIBRARY"] = "30",
+            ["TIMEOUT_STAFF"] = "30",
+            ["CAMERA_TIMER_SECONDS"] = "3"
         };
 
         foreach (var pair in defaults)
@@ -339,7 +342,8 @@ public sealed class SettingsService
                 "TIMEOUT_PRINTING",
                 "TIMEOUT_THANK_YOU",
                 "TIMEOUT_LIBRARY",
-                "TIMEOUT_STAFF"
+                "TIMEOUT_STAFF",
+                "CAMERA_TIMER_SECONDS"
             }
         };
 

@@ -10,13 +10,18 @@ namespace KawaiiStudio.App;
 
 public partial class App : Application
 {
-    private static readonly TimeSpan DefaultInactivityTimeout = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan DefaultInactivityTimeout = TimeSpan.FromSeconds(30);
     private DispatcherTimer? _inactivityTimer;
+    private DispatcherTimer? _inactivityCountdownTimer;
+    private DateTime _inactivityDeadlineUtc = DateTime.MinValue;
+    private int _lastTimeoutSeconds = -1;
     private SettingsService? _settings;
 
     public static SessionService? Session { get; private set; }
     public static NavigationService? Navigation { get; private set; }
     public static SettingsService? Settings { get; private set; }
+    public static int TimeoutSecondsRemaining { get; private set; }
+    public static event Action<int>? TimeoutSecondsChanged;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -59,7 +64,7 @@ public partial class App : Application
         var categoryViewModel = new CategoryViewModel(navigation, session, frameCatalog, themeCatalog);
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
         var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, cashAcceptor, cardPayment);
-        var captureViewModel = new CaptureViewModel(navigation, session, cameraService, themeCatalog);
+        var captureViewModel = new CaptureViewModel(navigation, session, cameraService, settings, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);
         var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, videoCompiler, themeCatalog);
         var printingViewModel = new PrintingViewModel(navigation, session, themeCatalog);
@@ -141,6 +146,8 @@ public partial class App : Application
         };
         _inactivityTimer.Tick += HandleInactivityTimeout;
         _inactivityTimer.Start();
+        StartInactivityCountdown();
+        SetInactivityDeadline();
     }
 
     private void ResetInactivityTimer()
@@ -153,6 +160,7 @@ public partial class App : Application
         UpdateInactivityInterval();
         _inactivityTimer.Stop();
         _inactivityTimer.Start();
+        SetInactivityDeadline();
     }
 
     private void UpdateInactivityInterval()
@@ -221,6 +229,7 @@ public partial class App : Application
         {
             Session?.AppendLog("INACTIVITY_TIMEOUT_IGNORED error=true");
             _inactivityTimer?.Start();
+            SetInactivityDeadline();
             return;
         }
 
@@ -230,6 +239,54 @@ public partial class App : Application
         }
 
         _inactivityTimer?.Start();
+        SetInactivityDeadline();
+    }
+
+    private void StartInactivityCountdown()
+    {
+        _inactivityCountdownTimer ??= new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+
+        _inactivityCountdownTimer.Tick -= HandleCountdownTick;
+        _inactivityCountdownTimer.Tick += HandleCountdownTick;
+        _inactivityCountdownTimer.Start();
+    }
+
+    private void HandleCountdownTick(object? sender, EventArgs e)
+    {
+        UpdateTimeoutRemaining();
+    }
+
+    private void SetInactivityDeadline()
+    {
+        if (_inactivityTimer is null)
+        {
+            return;
+        }
+
+        _inactivityDeadlineUtc = DateTime.UtcNow + _inactivityTimer.Interval;
+        UpdateTimeoutRemaining();
+    }
+
+    private void UpdateTimeoutRemaining()
+    {
+        var remainingSeconds = 0;
+        if (_inactivityTimer is not null && _inactivityTimer.IsEnabled)
+        {
+            var remaining = _inactivityDeadlineUtc - DateTime.UtcNow;
+            remainingSeconds = remaining > TimeSpan.Zero ? (int)Math.Ceiling(remaining.TotalSeconds) : 0;
+        }
+
+        if (remainingSeconds == _lastTimeoutSeconds)
+        {
+            return;
+        }
+
+        _lastTimeoutSeconds = remainingSeconds;
+        TimeoutSecondsRemaining = remainingSeconds;
+        TimeoutSecondsChanged?.Invoke(remainingSeconds);
     }
 
     private void OnAnyButtonClicked(object sender, RoutedEventArgs e)

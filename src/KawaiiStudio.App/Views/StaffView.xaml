@@ -1,12 +1,12 @@
 <UserControl x:Class="KawaiiStudio.App.Views.StaffView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#0B0B0B">
+             Background="#F6F2EA">
   <Grid>
     <Image Source="{Binding BackgroundPath, Converter={StaticResource FilePathToImage}}"
            Stretch="UniformToFill"
            Opacity="0.9" />
-    <Rectangle Fill="#66000000" />
+    <Rectangle Fill="#CCF6F2EA" />
     <Grid Margin="24">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
@@ -20,7 +20,7 @@
 
       <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel>
-          <Border Background="#1A1A1A" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+          <Border Background="#EEE7DD" CornerRadius="10" Padding="16" Margin="0,0,0,16">
             <StackPanel>
               <TextBlock Text="Tokens" FontSize="18" FontWeight="SemiBold" />
               <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
@@ -30,7 +30,7 @@
             </StackPanel>
           </Border>
 
-          <Border Background="#1A1A1A" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+          <Border Background="#EEE7DD" CornerRadius="10" Padding="16" Margin="0,0,0,16">
             <StackPanel>
               <TextBlock Text="Pricing" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
               <ItemsControl ItemsSource="{Binding PricingEntries}">
@@ -48,7 +48,7 @@
                           <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding Label}" FontSize="12" Foreground="#B8B8B8" VerticalAlignment="Center" />
-                        <Border Grid.Column="1" Background="#0F0F0F" CornerRadius="4" Padding="8,4" Width="120">
+                        <Border Grid.Column="1" Background="#E2D9CF" CornerRadius="4" Padding="8,4" Width="120">
                           <TextBlock Text="{Binding Value}" FontSize="12" />
                         </Border>
                       </Grid>
@@ -63,7 +63,7 @@
             </StackPanel>
           </Border>
 
-          <Border Background="#1A1A1A" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+          <Border Background="#EEE7DD" CornerRadius="10" Padding="16" Margin="0,0,0,16">
             <StackPanel>
               <TextBlock Text="Timeouts" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
               <ItemsControl ItemsSource="{Binding TimeoutEntries}">
@@ -81,7 +81,7 @@
                           <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding Label}" FontSize="12" Foreground="#B8B8B8" VerticalAlignment="Center" />
-                        <Border Grid.Column="1" Background="#0F0F0F" CornerRadius="4" Padding="8,4" Width="120">
+                        <Border Grid.Column="1" Background="#E2D9CF" CornerRadius="4" Padding="8,4" Width="120">
                           <TextBlock Text="{Binding Value}" FontSize="12" />
                         </Border>
                       </Grid>
@@ -92,7 +92,7 @@
             </StackPanel>
           </Border>
 
-          <Border Background="#1A1A1A" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+          <Border Background="#EEE7DD" CornerRadius="10" Padding="16" Margin="0,0,0,16">
             <StackPanel>
               <TextBlock Text="Hardware" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
               <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -110,7 +110,7 @@
             </StackPanel>
           </Border>
 
-          <Border Background="#1A1A1A" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+          <Border Background="#EEE7DD" CornerRadius="10" Padding="16" Margin="0,0,0,16">
             <StackPanel>
               <TextBlock Text="Templates &amp; QR" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
               <TextBlock Text="Adjust slot and QR placement for each template." FontSize="12" Foreground="#B8B8B8" Margin="0,0,0,8" />
@@ -132,7 +132,7 @@
         <Button Command="{Binding CancelEntryCommand}"
                 Background="Transparent"
                 BorderThickness="0" />
-        <Border Background="#1A1A1A"
+        <Border Background="#EEE7DD"
                 CornerRadius="12"
                 Padding="16"
                 Width="420"
@@ -167,3 +167,5 @@
     </Grid>
   </Grid>
 </UserControl>
+
+

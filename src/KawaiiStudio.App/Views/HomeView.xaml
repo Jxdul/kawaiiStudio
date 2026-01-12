@@ -1,7 +1,7 @@
 <UserControl x:Class="KawaiiStudio.App.Views.HomeView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#0B0B0B">
+             Background="#F6F2EA">
   <Grid>
     <Grid>
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -14,3 +14,4 @@
     <Button Content="Staff" Command="{Binding StaffCommand}" FontSize="12" Padding="10,4" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Opacity="0.7" />
   </Grid>
 </UserControl>
+

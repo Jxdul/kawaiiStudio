@@ -1,10 +1,10 @@
 <UserControl x:Class="KawaiiStudio.App.Views.ErrorView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#0B0B0B">
+             Background="#F6F2EA">
   <Grid>
-    <Rectangle Fill="#66000000" />
-    <Border Background="#1A1A1A"
+    <Rectangle Fill="#CCF6F2EA" />
+    <Border Background="#EEE7DD"
             CornerRadius="12"
             Padding="24"
             Width="520"
@@ -21,3 +21,5 @@
     </Border>
   </Grid>
 </UserControl>
+
+

@@ -5,8 +5,18 @@
         WindowState="Maximized"
         WindowStyle="None"
         ResizeMode="NoResize"
-        Background="#0B0B0B">
+        Background="#F6F2EA">
   <Grid>
     <ContentControl Content="{Binding CurrentViewModel}" />
+    <Border Background="#E6F6F2EA"
+            CornerRadius="6"
+            Padding="10,6"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="16"
+            Visibility="{Binding IsTimeoutVisible, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock Text="{Binding TimeoutLabel}" FontSize="14" FontWeight="SemiBold" />
+    </Border>
   </Grid>
 </Window>
+
