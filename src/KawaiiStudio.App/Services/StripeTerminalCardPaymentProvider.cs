@@ -50,7 +50,7 @@ public sealed class StripeTerminalCardPaymentProvider : ICardPaymentProvider, IS
         _locationId = GetLocationId();
         IsConnected = true;
 
-        if (string.IsNullOrWhiteSpace(_readerId) && _settings.TestMode)
+        if (string.IsNullOrWhiteSpace(_readerId))
         {
             var ok = await EnsureSimulatedReaderAsync(cancellationToken);
             IsConnected = ok;
@@ -92,7 +92,7 @@ public sealed class StripeTerminalCardPaymentProvider : ICardPaymentProvider, IS
         _readerId = GetReaderId();
         if (string.IsNullOrWhiteSpace(_readerId))
         {
-            if (_settings.TestMode && await EnsureSimulatedReaderAsync(cancellationToken))
+            if (await EnsureSimulatedReaderAsync(cancellationToken))
             {
                 _readerId = GetReaderId();
             }

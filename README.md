@@ -6,7 +6,7 @@ Kiosk-style photobooth app for Windows with a simple customer flow and a frame-d
 
 - Full screen WPF shell with Startup -> Home -> Thank You flow
 - Screen navigation and session state for size, quantity, layout, and frame selection
-- Startup checks with test mode + camera error screen
+- Startup checks with test mode, camera error screen, and worker health check
 - Frame auto-discovery from folder structure
 - Theme backgrounds per screen
 - Staff settings screen (pricing, timeouts, hardware, test mode)
@@ -16,7 +16,7 @@ Kiosk-style photobooth app for Windows with a simple customer flow and a frame-d
 - Composite rendering with QR overlay and print-ready output
 - Print preview screen (4x6, with 2x6 duplicated)
 - Cash acceptor RS232 provider (handshake + cash totals)
-- Stripe Terminal card flow (worker-backed) with simulator buttons in test mode
+- Stripe Terminal card flow (worker-backed) with simulator buttons (available in all modes)
 - Inactivity handling: home/capture suppressed; post-payment screens auto-advance; review timeout auto-fills
 
 ## Customer flow
@@ -109,6 +109,8 @@ TIMEOUT_REVIEW=45
 ```
 
 Pricing uses `PRICE{pairs}_{sizeCode}`, where size codes are `26` for 2x6 and `46` for 4x6.
+
+If `STRIPE_TERMINAL_READER_ID` is blank, the app will ask the worker to create a simulated reader (uses `STRIPE_TERMINAL_LOCATION_ID`).
 
 ## Templates
 

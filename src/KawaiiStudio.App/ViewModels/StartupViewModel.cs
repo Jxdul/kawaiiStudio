@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -9,6 +11,10 @@ namespace KawaiiStudio.App.ViewModels;
 public sealed class StartupViewModel : ScreenViewModelBase
 {
     private static readonly System.TimeSpan DeviceCheckTimeout = System.TimeSpan.FromSeconds(5);
+    private static readonly HttpClient Http = new()
+    {
+        Timeout = DeviceCheckTimeout
+    };
     private readonly NavigationService _navigation;
     private readonly SettingsService _settings;
     private readonly CameraService _camera;
@@ -112,7 +118,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return;
         }
 
-        var serverOk = await CheckPlaceholderAsync(Checks[2], "Server", testMode, token);
+        var serverOk = await CheckServerAsync(Checks[2], token);
         if (token.IsCancellationRequested)
         {
             return;
@@ -407,23 +413,67 @@ public sealed class StartupViewModel : ScreenViewModelBase
         return attempt;
     }
 
-    private static Task<bool> CheckPlaceholderAsync(
-        StartupCheckItem item,
-        string name,
-        bool testMode,
-        CancellationToken token)
+    private async Task<bool> CheckServerAsync(StartupCheckItem item, CancellationToken token)
     {
         if (token.IsCancellationRequested)
         {
-            return Task.FromResult(false);
+            return false;
         }
 
         item.SetStatus("Checking...", string.Empty, false);
-        _ = testMode;
+        var baseUrl = _settings.StripeTerminalBaseUrl?.Trim().TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            item.SetStatus("Failed", "Missing STRIPE_TERMINAL_BASE_URL", false);
+            KawaiiStudio.App.App.Log("STARTUP_SERVER_FAILED reason=missing_base_url");
+            return false;
+        }
 
-        KawaiiStudio.App.App.Log($"STARTUP_{name.ToUpperInvariant().Replace(' ', '_')}_OK");
-        item.SetStatus("Connected", "Placeholder", true);
-        return Task.FromResult(true);
+        var url = $"{baseUrl}/health";
+
+        try
+        {
+            using var response = await Http.GetAsync(url, token);
+            if (!response.IsSuccessStatusCode)
+            {
+                item.SetStatus("Failed", "Server not reachable", false);
+                KawaiiStudio.App.App.Log($"STARTUP_SERVER_FAILED status={(int)response.StatusCode}");
+                return false;
+            }
+
+            var body = await response.Content.ReadAsStringAsync(token);
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                item.SetStatus("Failed", "Empty response", false);
+                KawaiiStudio.App.App.Log("STARTUP_SERVER_FAILED reason=empty_response");
+                return false;
+            }
+
+            using var json = JsonDocument.Parse(body);
+            var ok = json.RootElement.TryGetProperty("ok", out var okValue) && okValue.GetBoolean();
+            if (!ok)
+            {
+                item.SetStatus("Failed", "Server unhealthy", false);
+                KawaiiStudio.App.App.Log("STARTUP_SERVER_FAILED reason=unhealthy");
+                return false;
+            }
+
+            item.SetStatus("Connected", "Cloudflare worker", true);
+            KawaiiStudio.App.App.Log("STARTUP_SERVER_OK");
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            item.SetStatus("Failed", "Timeout", false);
+            KawaiiStudio.App.App.Log("STARTUP_SERVER_TIMEOUT");
+            return false;
+        }
+        catch
+        {
+            item.SetStatus("Failed", "Server error", false);
+            KawaiiStudio.App.App.Log("STARTUP_SERVER_FAILED");
+            return false;
+        }
     }
 
     private void UpdateCanContinue(bool canContinue, bool hasErrors)
