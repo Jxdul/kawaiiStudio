@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -48,11 +49,13 @@ public sealed class UploadService
             return (false, null, "video_missing");
         }
 
+        var sessionId = BuildUploadSessionId(session);
+
         try
         {
             var initResult = await PostJsonAsync(
                 $"{baseUrl}/api/upload/init",
-                new { sessionId = session.SessionId ?? string.Empty },
+                new { sessionId },
                 cancellationToken);
 
             if (!initResult.ok)
@@ -85,7 +88,7 @@ public sealed class UploadService
 
             var completeResult = await PostJsonAsync(
                 completeUrl,
-                new { token, sessionId = session.SessionId ?? string.Empty },
+                new { token, sessionId },
                 cancellationToken);
 
             if (!completeResult.ok)
@@ -127,6 +130,47 @@ public sealed class UploadService
             ".mov" => "video/quicktime",
             _ => "application/octet-stream"
         };
+    }
+
+    private string BuildUploadSessionId(SessionState session)
+    {
+        var baseId = string.IsNullOrWhiteSpace(session.SessionId) ? "session" : session.SessionId;
+        var boothId = NormalizeBoothId(_settings.BoothId);
+        if (string.IsNullOrWhiteSpace(boothId))
+        {
+            return baseId;
+        }
+
+        var prefix = $"{boothId}_";
+        if (baseId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return baseId;
+        }
+
+        return $"{boothId}_{baseId}";
+    }
+
+    private static string NormalizeBoothId(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return string.Empty;
+        }
+
+        var builder = new StringBuilder();
+        foreach (var ch in raw.Trim())
+        {
+            if (char.IsLetterOrDigit(ch) || ch == '-' || ch == '_')
+            {
+                builder.Append(ch);
+            }
+            else if (char.IsWhiteSpace(ch))
+            {
+                builder.Append('_');
+            }
+        }
+
+        return builder.ToString();
     }
 
     private static string? TryReadUrl(string json)

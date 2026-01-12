@@ -34,6 +34,7 @@ public sealed class SettingsService
     public string StripeTerminalLocationId => GetString("STRIPE_TERMINAL_LOCATION_ID", string.Empty);
     public string UploadBaseUrl => GetString("UPLOAD_BASE_URL", string.Empty);
     public bool UploadEnabled => GetBool("UPLOAD_ENABLED", false);
+    public string BoothId => GetString("BOOTH_ID", string.Empty);
 
     public string GetValue(string key, string fallback = "")
     {
@@ -275,6 +276,7 @@ public sealed class SettingsService
         _values["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty;
         _values["UPLOAD_BASE_URL"] = string.Empty;
         _values["UPLOAD_ENABLED"] = "false";
+        _values["BOOTH_ID"] = string.Empty;
         _values["CAMERA_PROVIDER"] = "simulated";
         _values["TEST_MODE"] = "false";
         _values["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
@@ -326,6 +328,7 @@ public sealed class SettingsService
             ["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty,
             ["UPLOAD_BASE_URL"] = string.Empty,
             ["UPLOAD_ENABLED"] = "false",
+            ["BOOTH_ID"] = string.Empty,
             ["CAMERA_PROVIDER"] = "simulated",
             ["TEST_MODE"] = "false",
             ["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture),
@@ -388,6 +391,7 @@ public sealed class SettingsService
                 "STRIPE_TERMINAL_LOCATION_ID",
                 "UPLOAD_BASE_URL",
                 "UPLOAD_ENABLED",
+                "BOOTH_ID",
                 "CAMERA_PROVIDER",
                 "TEST_MODE"
             },
