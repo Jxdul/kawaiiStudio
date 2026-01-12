@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 
 namespace KawaiiStudio.App.Services;
 
@@ -39,6 +40,11 @@ public sealed class CameraService : ICameraProvider
     public Task StopLiveViewAsync(CancellationToken cancellationToken)
     {
         return _provider.StopLiveViewAsync(cancellationToken);
+    }
+
+    public Task<BitmapSource?> GetLiveViewFrameAsync(CancellationToken cancellationToken)
+    {
+        return _provider.GetLiveViewFrameAsync(cancellationToken);
     }
 
     public Task<bool> CapturePhotoAsync(string outputPath, CancellationToken cancellationToken)

@@ -25,7 +25,19 @@
 
         <Border Background="#101010" CornerRadius="12" Margin="0,0,16,0">
           <Grid>
-            <TextBlock Text="Live View" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#B8B8B8" />
+            <Image Source="{Binding LiveViewImage}" Stretch="Uniform" />
+            <TextBlock Text="Live View" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#B8B8B8">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding LiveViewImage}" Value="{x:Null}">
+                      <Setter Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
           </Grid>
         </Border>
 

@@ -36,6 +36,7 @@ public partial class App : Application
         Session = session;
         var cameraProvider = CreateCameraProvider(settings);
         var cameraService = new CameraService(cameraProvider);
+        var cashAcceptor = new SimulatedCashAcceptorProvider();
         var qrCodes = new QrCodeService();
         var frameComposer = new FrameCompositionService(templateCatalog, qrCodes, frameOverrides);
 
@@ -54,7 +55,7 @@ public partial class App : Application
         var layoutViewModel = new LayoutViewModel(navigation, session, themeCatalog);
         var categoryViewModel = new CategoryViewModel(navigation, session, frameCatalog, themeCatalog);
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
-        var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings);
+        var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, cashAcceptor);
         var captureViewModel = new CaptureViewModel(navigation, session, cameraService, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);
         var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, themeCatalog);

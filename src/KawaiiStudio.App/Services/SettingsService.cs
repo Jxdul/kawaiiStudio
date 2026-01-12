@@ -295,58 +295,104 @@ public sealed class SettingsService
 
     private IEnumerable<string> BuildOutputLines()
     {
-        var orderedKeys = new[]
+        var groups = new[]
         {
-            "PRICE1_26",
-            "PRICE2_26",
-            "PRICE3_26",
-            "PRICE4_26",
-            "PRICE5_26",
-            "PRICE1_46",
-            "PRICE2_46",
-            "PRICE3_46",
-            "PRICE4_46",
-            "PRICE5_46",
-            "MAX_QUANTITY",
-            "TOKEN_VALUE",
-            "PrintName",
-            "cash_COM",
-            "CAMERA_PROVIDER",
-            "TEST_MODE",
-            "TIMEOUT_DEFAULT",
-            "TIMEOUT_STARTUP",
-            "TIMEOUT_HOME",
-            "TIMEOUT_SIZE",
-            "TIMEOUT_QUANTITY",
-            "TIMEOUT_LAYOUT",
-            "TIMEOUT_CATEGORY",
-            "TIMEOUT_FRAME",
-            "TIMEOUT_PAYMENT",
-            "TIMEOUT_CAPTURE",
-            "TIMEOUT_REVIEW",
-            "TIMEOUT_FINALIZE",
-            "TIMEOUT_PRINTING",
-            "TIMEOUT_THANK_YOU",
-            "TIMEOUT_LIBRARY",
-            "TIMEOUT_STAFF"
+            new[]
+            {
+                "PRICE1_26",
+                "PRICE2_26",
+                "PRICE3_26",
+                "PRICE4_26",
+                "PRICE5_26",
+                "PRICE1_46",
+                "PRICE2_46",
+                "PRICE3_46",
+                "PRICE4_46",
+                "PRICE5_46"
+            },
+            new[]
+            {
+                "MAX_QUANTITY",
+                "TOKEN_VALUE"
+            },
+            new[]
+            {
+                "PrintName",
+                "cash_COM",
+                "CAMERA_PROVIDER",
+                "TEST_MODE"
+            },
+            new[]
+            {
+                "TIMEOUT_DEFAULT",
+                "TIMEOUT_STARTUP",
+                "TIMEOUT_HOME",
+                "TIMEOUT_SIZE",
+                "TIMEOUT_QUANTITY",
+                "TIMEOUT_LAYOUT",
+                "TIMEOUT_CATEGORY",
+                "TIMEOUT_FRAME",
+                "TIMEOUT_PAYMENT",
+                "TIMEOUT_CAPTURE",
+                "TIMEOUT_REVIEW",
+                "TIMEOUT_FINALIZE",
+                "TIMEOUT_PRINTING",
+                "TIMEOUT_THANK_YOU",
+                "TIMEOUT_LIBRARY",
+                "TIMEOUT_STAFF"
+            }
         };
 
-        var lines = new List<string>();
-        foreach (var key in orderedKeys)
+        var groupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var group in groups)
         {
-            if (_values.TryGetValue(key, out var value))
+            foreach (var key in group)
             {
-                lines.Add($"{key}={value}");
+                groupKeys.Add(key);
             }
         }
 
-        var remaining = _values.Keys
-            .Except(orderedKeys, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase);
-
-        foreach (var key in remaining)
+        var lines = new List<string>();
+        foreach (var group in groups)
         {
-            lines.Add($"{key}={_values[key]}");
+            var groupLines = new List<string>();
+            foreach (var key in group)
+            {
+                if (_values.TryGetValue(key, out var value))
+                {
+                    groupLines.Add($"{key}={value}");
+                }
+            }
+
+            if (groupLines.Count == 0)
+            {
+                continue;
+            }
+
+            if (lines.Count > 0)
+            {
+                lines.Add(string.Empty);
+            }
+
+            lines.AddRange(groupLines);
+        }
+
+        var remaining = _values.Keys
+            .Except(groupKeys, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (remaining.Count > 0)
+        {
+            if (lines.Count > 0)
+            {
+                lines.Add(string.Empty);
+            }
+
+            foreach (var key in remaining)
+            {
+                lines.Add($"{key}={_values[key]}");
+            }
         }
 
         return lines;

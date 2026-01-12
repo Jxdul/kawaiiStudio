@@ -34,6 +34,11 @@ public sealed class SimulatedCameraProvider : ICameraProvider
         return Task.CompletedTask;
     }
 
+    public Task<BitmapSource?> GetLiveViewFrameAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult<BitmapSource?>(CreatePlaceholderImage(DateTime.Now));
+    }
+
     public Task<bool> CapturePhotoAsync(string outputPath, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(outputPath))
@@ -42,7 +47,13 @@ public sealed class SimulatedCameraProvider : ICameraProvider
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? ".");
-        WritePlaceholderImage(outputPath, DateTime.Now);
+        var image = CreatePlaceholderImage(DateTime.Now);
+        if (image is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        SavePlaceholderImage(outputPath, image);
         return Task.FromResult(true);
     }
 
@@ -56,7 +67,7 @@ public sealed class SimulatedCameraProvider : ICameraProvider
         return Task.FromResult(true);
     }
 
-    private static void WritePlaceholderImage(string path, DateTime timestamp)
+    private static BitmapSource? CreatePlaceholderImage(DateTime timestamp)
     {
         const int width = 800;
         const int height = 600;
@@ -80,9 +91,14 @@ public sealed class SimulatedCameraProvider : ICameraProvider
 
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(visual);
+        bitmap.Freeze();
+        return bitmap;
+    }
 
+    private static void SavePlaceholderImage(string path, BitmapSource image)
+    {
         var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        encoder.Frames.Add(BitmapFrame.Create(image));
         using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
         encoder.Save(stream);
     }
