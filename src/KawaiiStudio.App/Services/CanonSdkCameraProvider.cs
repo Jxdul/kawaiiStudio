@@ -331,7 +331,7 @@ public sealed class CanonSdkCameraProvider : ICameraProvider
         return err == EDSDK.EDS_ERR_OK;
     }
 
-    private static uint DownloadWithRetry(IntPtr directoryItem, long size, IntPtr stream)
+    private static uint DownloadWithRetry(IntPtr directoryItem, ulong size, IntPtr stream)
     {
         uint err = EDSDK.EDS_ERR_OK;
         for (var attempt = 0; attempt < MaxRetryAttempts; attempt++)

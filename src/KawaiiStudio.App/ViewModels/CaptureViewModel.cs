@@ -98,7 +98,6 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         base.OnNavigatedTo();
         KawaiiStudio.App.App.Log("CAPTURE_START");
         ResetState();
-        StartLiveView();
     }
 
     private void ResetState()
@@ -176,8 +175,12 @@ public sealed class CaptureViewModel : ScreenViewModelBase
 
     private void StopLiveView()
     {
-        _liveViewTimer?.Stop();
-        _liveViewTimer?.Tick -= OnLiveViewTick;
+        if (_liveViewTimer is not null)
+        {
+            _liveViewTimer.Stop();
+            _liveViewTimer.Tick -= OnLiveViewTick;
+        }
+
         _liveViewCts?.Cancel();
         _liveViewCts = null;
         LiveViewImage = null;
@@ -214,6 +217,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
                 }
             }
 
+            StartLiveView();
             for (var remaining = CountdownSeconds; remaining > 0; remaining--)
             {
                 token.ThrowIfCancellationRequested();

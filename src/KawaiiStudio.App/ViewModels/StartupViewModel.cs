@@ -110,7 +110,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return;
         }
 
-        var allOk = cameraOk && cashOk && serverOk;
+        var allOk = cashOk && serverOk;
         UpdateCanContinue(allOk);
 
         _isChecking = false;
@@ -202,8 +202,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
         if (!testMode && !token.IsCancellationRequested)
         {
-            _errorViewModel.SetError("Camera Connection Failed", "Camera not connected. Please check the cable and power, then restart.");
-            _navigation.Navigate("error");
+            KawaiiStudio.App.App.Log("STARTUP_CAMERA_CONTINUE allowed=true");
         }
 
         return false;
