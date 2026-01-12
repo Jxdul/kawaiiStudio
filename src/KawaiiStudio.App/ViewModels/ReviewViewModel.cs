@@ -158,7 +158,7 @@ public sealed class ReviewViewModel : ScreenViewModelBase
 
     private void UpdatePreview()
     {
-        var preview = _composer.RenderComposite(_session.Current, out var error);
+        var preview = _composer.RenderComposite(_session.Current, includeQr: false, out var error);
         if (preview is null)
         {
             PreviewImage = null;

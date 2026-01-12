@@ -108,9 +108,17 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
                 {
                     StatusText = "Composite, video, and upload ready.";
                 }
+                else if (videoOk && _uploadService.IsEnabled && !uploadOk)
+                {
+                    StatusText = "Composite and video ready. Upload failed - printing without QR.";
+                }
                 else if (videoOk)
                 {
                     StatusText = "Composite and video ready.";
+                }
+                else if (_uploadService.IsEnabled && !uploadOk)
+                {
+                    StatusText = "Composite ready. Upload failed - printing without QR.";
                 }
                 else
                 {

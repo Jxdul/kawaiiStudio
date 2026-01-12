@@ -225,6 +225,11 @@ public sealed class FrameCompositionService
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(session.QrUrl))
+        {
+            return;
+        }
+
         var payload = ResolveQrPayload(session);
         var qrImage = _qrCodes.Render(payload, 12);
         if (qrImage is null)
