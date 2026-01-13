@@ -713,25 +713,28 @@
     ]
   },
   "packageFolders": {
-    "/Users/jadylposadas/.nuget/packages/": {}
+    "C:\\Users\\posad\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/jadylposadas/Projects/kawaiiStudio/src/KawaiiStudio.App/KawaiiStudio.App.csproj",
+      "projectUniqueName": "C:\\Users\\posad\\Projects\\kawaiiStudio\\src\\KawaiiStudio.App\\KawaiiStudio.App.csproj",
       "projectName": "KawaiiStudio.App",
-      "projectPath": "/Users/jadylposadas/Projects/kawaiiStudio/src/KawaiiStudio.App/KawaiiStudio.App.csproj",
-      "packagesPath": "/Users/jadylposadas/.nuget/packages/",
-      "outputPath": "/Users/jadylposadas/Projects/kawaiiStudio/src/KawaiiStudio.App/obj/",
+      "projectPath": "C:\\Users\\posad\\Projects\\kawaiiStudio\\src\\KawaiiStudio.App\\KawaiiStudio.App.csproj",
+      "packagesPath": "C:\\Users\\posad\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\posad\\Projects\\kawaiiStudio\\src\\KawaiiStudio.App\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/jadylposadas/Projects/kawaiiStudio/NuGet.Config",
-        "/Users/jadylposadas/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\posad\\Projects\\kawaiiStudio\\NuGet.Config",
+        "C:\\Users\\posad\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net8.0-windows"
       ],
       "sources": {
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -796,15 +799,7 @@
             "version": "[8.0.22, 8.0.22]"
           },
           {
-            "name": "Microsoft.NETCore.App.Host.win-x64",
-            "version": "[8.0.22, 8.0.22]"
-          },
-          {
             "name": "Microsoft.NETCore.App.Runtime.win-x64",
-            "version": "[8.0.22, 8.0.22]"
-          },
-          {
-            "name": "Microsoft.WindowsDesktop.App.Ref",
             "version": "[8.0.22, 8.0.22]"
           },
           {
@@ -820,7 +815,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json"
       }
     },
     "runtimes": {
