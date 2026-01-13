@@ -1216,3 +1216,8 @@ C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windo
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\themes\default\buttons\placeholder
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\themes\default\screens\placeholder
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\themes\default\sounds\placeholder
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\OpenCvSharp.dll
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\runtimes\win-x64\native\OpenCvSharpExtern.dll
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\runtimes\win-x64\native\opencv_videoio_ffmpeg4110_64.dll
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\runtimes\win-x86\native\OpenCvSharpExtern.dll
+C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\runtimes\win-x86\native\opencv_videoio_ffmpeg4110.dll
