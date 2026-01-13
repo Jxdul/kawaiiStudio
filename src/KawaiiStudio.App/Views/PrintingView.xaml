@@ -16,7 +16,8 @@
 
       <StackPanel Grid.Row="0" Margin="0,0,0,12">
         <TextBlock Text="Printing" FontSize="32" FontWeight="SemiBold" />
-        <TextBlock Text="Preview of the print output" FontSize="14" Foreground="#B8B8B8" Margin="0,4,0,0" />
+        <TextBlock Text="{Binding StatusText}" FontSize="14" Foreground="#6B625A" Margin="0,4,0,0" />
+        <TextBlock Text="Preview of the print output" FontSize="12" Foreground="#B8B8B8" Margin="0,4,0,0" />
       </StackPanel>
 
       <Border Grid.Row="1" Background="#E7DFD6" CornerRadius="12" Padding="12">

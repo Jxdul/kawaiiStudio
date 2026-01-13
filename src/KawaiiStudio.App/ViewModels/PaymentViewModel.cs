@@ -701,6 +701,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             "invalid_amount" => "Invalid bill amount.",
             "no_balance_due" => "No balance due.",
             "rejected" => "Bill rejected.",
+            "error_0x11" => "Cash reader error.",
             _ => string.Empty
         };
     }

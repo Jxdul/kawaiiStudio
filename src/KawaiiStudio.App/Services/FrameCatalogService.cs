@@ -9,6 +9,8 @@ namespace KawaiiStudio.App.Services;
 public sealed class FrameCatalogService
 {
     private readonly string _framesRoot;
+    private readonly object _cacheLock = new();
+    private IReadOnlyList<FrameCategory>? _cachedCategories;
 
     public FrameCatalogService(string framesRoot)
     {
@@ -17,12 +19,27 @@ public sealed class FrameCatalogService
 
     public IReadOnlyList<FrameCategory> Load()
     {
-        var categories = new List<FrameCategory>();
+        lock (_cacheLock)
+        {
+            if (_cachedCategories is not null)
+            {
+                return _cachedCategories;
+            }
 
-        Load2x6Categories(categories);
-        Load4x6Categories(categories);
+            var categories = new List<FrameCategory>();
+            Load2x6Categories(categories);
+            Load4x6Categories(categories);
+            _cachedCategories = categories;
+            return _cachedCategories;
+        }
+    }
 
-        return categories;
+    public void ClearCache()
+    {
+        lock (_cacheLock)
+        {
+            _cachedCategories = null;
+        }
     }
 
     private void Load2x6Categories(List<FrameCategory> categories)

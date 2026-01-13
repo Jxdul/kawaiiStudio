@@ -133,10 +133,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         _forceContinueCommand.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanForceContinue));
 
-        if (allOk && !hasErrors)
-        {
-            _navigation.Navigate("home");
-        }
+        // Stay on startup screen until user explicitly continues.
     }
 
     private void EnsureChecks()

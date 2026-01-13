@@ -135,6 +135,7 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 ## Notes
 
 - Some screens remain placeholders for device integrations (camera, printer).
+- Camera focus failures currently prevent a capture; it should still take the photo even if autofocus misses.
 - See `specifications.txt` for the full functional spec and acceptance criteria.
 
 ## Remaining work (from `specifications.txt`)

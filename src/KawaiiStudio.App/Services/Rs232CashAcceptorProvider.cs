@@ -21,6 +21,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
     private const byte EventPowerUp = 0x80;
     private const byte EventHandshakeComplete = 0x8F;
+    private const byte EventOnlineAlternative = 0x3F;
     private const byte EventBillValidated = 0x81;
     private const byte EventStacked = 0x10;
     private const byte EventRejected = 0x11;
@@ -42,6 +43,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private CancellationTokenSource? _readCts;
     private Task? _readTask;
     private Timer? _pollTimer;
+    private bool _onlineHandshakeSent;
     private bool _expectBillType;
     private bool _handshakeComplete;
     private bool _acceptingEnabled;
@@ -188,6 +190,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     {
         lock (_stateLock)
         {
+            _onlineHandshakeSent = false;
             _expectBillType = false;
             _handshakeComplete = false;
             _lastAppliedAccepting = null;
@@ -294,10 +297,17 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             MarkConnected();
         }
 
+        if (IsOnlineByte(value))
+        {
+            HandleOnline(value);
+            return;
+        }
+
         if (value == EventPowerUp)
         {
             lock (_stateLock)
             {
+                _onlineHandshakeSent = false;
                 _handshakeComplete = false;
                 _expectBillType = false;
                 _pendingAmount = null;
@@ -371,49 +381,69 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         int? amount = null;
         string? rejectReason = null;
         bool shouldAccept;
+        bool directEscrow;
+        bool ignoreEscrow;
 
         lock (_stateLock)
         {
-            if (!_expectBillType)
+            if (_pendingAccepted)
             {
-                return;
-            }
-
-            _expectBillType = false;
-            _pendingAccepted = false;
-            if (BillTypeMap.TryGetValue(value, out var mappedAmount))
-            {
-                amount = mappedAmount;
-                if (!_acceptingEnabled)
-                {
-                    rejectReason = "intake_disabled";
-                }
-                else if (amount <= 0)
-                {
-                    rejectReason = "invalid_amount";
-                }
-                else if (_allowedBills.Count > 0 && !_allowedBills.Contains(amount.Value))
-                {
-                    rejectReason = "unsupported_denomination";
-                }
-                else if (_remainingAmount <= 0m)
-                {
-                    rejectReason = "no_balance_due";
-                }
-                else if (amount.Value > _remainingAmount)
-                {
-                    rejectReason = "overpayment";
-                }
+                ignoreEscrow = true;
+                directEscrow = false;
+                shouldAccept = false;
+                _expectBillType = false;
             }
             else
             {
-                rejectReason = "unsupported_denomination";
-            }
+                ignoreEscrow = false;
+                directEscrow = !_expectBillType;
+                _expectBillType = false;
 
-            _pendingAmount = amount;
-            _pendingRejectReason = rejectReason;
-            _pendingAccepted = rejectReason is null && amount.HasValue && amount.Value > 0;
-            shouldAccept = _pendingAccepted;
+                if (BillTypeMap.TryGetValue(value, out var mappedAmount))
+                {
+                    amount = mappedAmount;
+                    if (!_acceptingEnabled)
+                    {
+                        rejectReason = "intake_disabled";
+                    }
+                    else if (amount <= 0)
+                    {
+                        rejectReason = "invalid_amount";
+                    }
+                    else if (_allowedBills.Count > 0 && !_allowedBills.Contains(amount.Value))
+                    {
+                        rejectReason = "unsupported_denomination";
+                    }
+                    else if (_remainingAmount <= 0m)
+                    {
+                        rejectReason = "no_balance_due";
+                    }
+                    else if (amount.Value > _remainingAmount)
+                    {
+                        rejectReason = "overpayment";
+                    }
+                }
+                else
+                {
+                    rejectReason = "unsupported_denomination";
+                }
+
+                _pendingAmount = amount;
+                _pendingRejectReason = rejectReason;
+                _pendingAccepted = rejectReason is null && amount.HasValue && amount.Value > 0;
+                shouldAccept = _pendingAccepted;
+            }
+        }
+
+        if (ignoreEscrow)
+        {
+            KawaiiStudio.App.App.Log("CASH_ESCROW_IGNORED reason=pending");
+            return;
+        }
+
+        if (directEscrow)
+        {
+            KawaiiStudio.App.App.Log("CASH_ESCROW_DIRECT");
         }
 
         if (shouldAccept)
@@ -455,16 +485,26 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     {
         int amount;
         string? reason;
+        bool accepted;
         lock (_stateLock)
         {
             amount = _pendingAmount ?? 0;
             reason = _pendingRejectReason ?? "rejected";
             _pendingAmount = null;
             _pendingRejectReason = null;
+            accepted = _pendingAccepted;
             _pendingAccepted = false;
         }
 
-        KawaiiStudio.App.App.Log($"CASH_REJECTED amount={amount} reason={reason}");
+        if (accepted)
+        {
+            reason = "error_0x11";
+            KawaiiStudio.App.App.Log($"CASH_ERROR_GENERIC amount={amount} reason={reason}");
+        }
+        else
+        {
+            KawaiiStudio.App.App.Log($"CASH_REJECTED amount={amount} reason={reason}");
+        }
         BillRejected?.Invoke(this, new CashAcceptorEventArgs(amount, reason));
     }
 
@@ -533,6 +573,11 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         return value == CommandEnable || value == CommandDisable;
     }
 
+    private static bool IsOnlineByte(byte value)
+    {
+        return value == CommandEnable || value == EventOnlineAlternative;
+    }
+
     private static bool IsConnectionByte(byte value)
     {
         return value == EventPowerUp
@@ -541,6 +586,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             || value == EventStacked
             || value == EventRejected
             || IsBillType(value)
+            || IsOnlineByte(value)
             || IsStatusByte(value)
             || (value >= 0x20 && value <= 0x2A);
     }
@@ -549,12 +595,39 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     {
         return value == EventPowerUp
             || value == EventHandshakeComplete
+            || IsOnlineByte(value)
             || value == EventBillValidated
             || value == EventStacked
             || value == EventRejected
             || IsBillType(value)
             || IsStatusByte(value)
             || (value >= 0x20 && value <= 0x2A);
+    }
+
+    private void HandleOnline(byte value)
+    {
+        bool shouldHandshake;
+        lock (_stateLock)
+        {
+            shouldHandshake = !_onlineHandshakeSent && !_pendingAccepted && !_expectBillType;
+            if (shouldHandshake)
+            {
+                _onlineHandshakeSent = true;
+                _handshakeComplete = true;
+            }
+        }
+
+        if (shouldHandshake)
+        {
+            KawaiiStudio.App.App.Log("CASH_ONLINE");
+            SendByte(CommandAck);
+            ApplyAcceptanceState(force: true);
+        }
+
+        if (value == CommandEnable)
+        {
+            HandleStatus(value);
+        }
     }
 
     private void HandleStatus(byte value)

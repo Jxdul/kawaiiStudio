@@ -296,22 +296,9 @@ public sealed class FrameCompositionService
         return template.Qr;
     }
 
-    private static BitmapImage? LoadBitmap(string path)
+    private static BitmapSource? LoadBitmap(string path)
     {
-        try
-        {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.UriSource = new Uri(path, UriKind.Absolute);
-            bitmap.EndInit();
-            bitmap.Freeze();
-            return bitmap;
-        }
-        catch
-        {
-            return null;
-        }
+        return ImageCache.GetOrLoad(path);
     }
 
     private static BitmapSource RenderDuplicatedTwoBySix(BitmapSource source)

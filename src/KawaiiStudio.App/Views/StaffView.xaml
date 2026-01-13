@@ -102,6 +102,12 @@
                 <TextBox Text="{Binding PrintName, UpdateSourceTrigger=PropertyChanged}" Width="160" />
               </StackPanel>
               <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="2x6 ticket" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
+                <TextBox Text="{Binding TwoBySixPrintTicketPath, UpdateSourceTrigger=PropertyChanged}" Width="260" />
+                <Button Content="Export 2x6" Command="{Binding ExportTwoBySixTicketCommand}" Padding="12,6" Margin="8,0,0,0" />
+              </StackPanel>
+              <TextBlock Text="{Binding PrintTicketStatus}" FontSize="11" Foreground="#8A8A8A" Margin="120,4,0,0" />
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                 <TextBlock Text="Cash COM" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
                 <TextBox Text="{Binding CashCom, UpdateSourceTrigger=PropertyChanged}" Width="120" />
               </StackPanel>

@@ -9,6 +9,9 @@ namespace KawaiiStudio.App.Services;
 public sealed class ThemeCatalogService
 {
     private readonly string _themeRoot;
+    private readonly object _cacheLock = new();
+    private IReadOnlyList<ThemeBackground>? _cachedBackgrounds;
+    private Dictionary<string, string?>? _backgroundMap;
 
     public ThemeCatalogService(string themeRoot)
     {
@@ -17,10 +20,23 @@ public sealed class ThemeCatalogService
 
     public IReadOnlyList<ThemeBackground> LoadBackgrounds()
     {
+        lock (_cacheLock)
+        {
+            if (_cachedBackgrounds is not null)
+            {
+                return _cachedBackgrounds;
+            }
+        }
+
         var backgroundsRoot = Path.Combine(_themeRoot, "backgrounds");
         if (!Directory.Exists(backgroundsRoot))
         {
-            return Array.Empty<ThemeBackground>();
+            lock (_cacheLock)
+            {
+                _cachedBackgrounds = Array.Empty<ThemeBackground>();
+                _backgroundMap = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                return _cachedBackgrounds;
+            }
         }
 
         var directories = Directory.EnumerateDirectories(backgroundsRoot, "*", SearchOption.AllDirectories)
@@ -44,7 +60,12 @@ public sealed class ThemeCatalogService
             results.Add(new ThemeBackground(relativeKey.Replace(Path.DirectorySeparatorChar, '/'), directory, assets));
         }
 
-        return results;
+        lock (_cacheLock)
+        {
+            _cachedBackgrounds = results;
+            _backgroundMap = BuildBackgroundMap(results);
+            return _cachedBackgrounds;
+        }
     }
 
     public string? GetBackgroundPath(string screenKey)
@@ -54,18 +75,9 @@ public sealed class ThemeCatalogService
             return null;
         }
 
-        var backgroundsRoot = Path.Combine(_themeRoot, "backgrounds");
-        var sanitized = screenKey.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-        var folderPath = Path.Combine(backgroundsRoot, sanitized);
-        if (!Directory.Exists(folderPath))
-        {
-            return null;
-        }
-
-        return Directory.EnumerateFiles(folderPath)
-            .Where(IsImageFile)
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault();
+        var normalized = NormalizeKey(screenKey);
+        var map = GetBackgroundMap();
+        return map.TryGetValue(normalized, out var asset) ? asset : null;
     }
 
     private static bool IsImageFile(string path)
@@ -74,5 +86,40 @@ public sealed class ThemeCatalogService
         return string.Equals(extension, ".png", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".jpg", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".jpeg", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private Dictionary<string, string?> GetBackgroundMap()
+    {
+        lock (_cacheLock)
+        {
+            if (_backgroundMap is not null)
+            {
+                return _backgroundMap;
+            }
+        }
+
+        var backgrounds = LoadBackgrounds();
+        lock (_cacheLock)
+        {
+            _backgroundMap ??= BuildBackgroundMap(backgrounds);
+            return _backgroundMap;
+        }
+    }
+
+    private static Dictionary<string, string?> BuildBackgroundMap(IEnumerable<ThemeBackground> backgrounds)
+    {
+        var map = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var background in backgrounds)
+        {
+            var key = NormalizeKey(background.ScreenKey);
+            map[key] = background.Assets.FirstOrDefault();
+        }
+
+        return map;
+    }
+
+    private static string NormalizeKey(string key)
+    {
+        return key.Replace('\\', '/').Trim('/');
     }
 }
