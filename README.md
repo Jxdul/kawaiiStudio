@@ -150,3 +150,38 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 ## Planned integrations
 
 - OpenCvSharp (via `OpenCvSharp4` / `OpenCvSharp4.Windows`) will be added later to support richer template processing, compositing adjustments, and any future live video effects that benefit from OpenCV-level controls.
+
+## Planned Server Integration Features
+
+### Booth Registration & Validation
+- Booth ID validation - software will not start without being in the allowed BOOTH_ID list
+- Automatic booth registration with the server on first launch
+- Booth identity verification for all server communications
+
+### Remote Configuration Management
+- Receive configuration updates from server without requiring manual restarts
+- Dynamic reload of printer settings, timeouts, pricing, and frame availability
+- Real-time application of configuration changes
+
+### Health Monitoring & Reporting
+- Automatic heartbeat/ping to server to track booth online/offline status
+- Local device health tracking (CPU, memory, disk usage)
+- Automatic incident logging for crashes, failed payments, and hardware issues
+- Session health metrics reporting to server
+
+### Photo Management & Uploads
+- Automatic upload of photos to server-organized cloud storage per booth
+- Session metadata tracking (timestamp, size, layout, payment method)
+- Integration with Cloudflare R2 for scalable image storage
+
+### Audit Logging
+- Session activity logging with timestamps and user actions
+- Transaction logging (payments, captures, prints)
+- Error and exception logging with context
+- Automatic log transmission to server for centralized audit trail
+
+### Software Updates & Versioning
+- Receive and apply software updates from server
+- Staged update deployments with rollback capability
+- Version verification on startup
+- Automatic update notifications and scheduling
