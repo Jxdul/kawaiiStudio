@@ -146,3 +146,7 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 - Config parsing for `config/app.json` and `config/pricing.json` is not implemented.
 - Provider interfaces for printer/upload are not defined yet.
 - Staff menu secret access, device diagnostics, and log export are not implemented.
+
+## Planned integrations
+
+- OpenCvSharp (via `OpenCvSharp4` / `OpenCvSharp4.Windows`) will be added later to support richer template processing, compositing adjustments, and any future live video effects that benefit from OpenCV-level controls.
