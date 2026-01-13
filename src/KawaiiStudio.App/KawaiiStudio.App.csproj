@@ -23,6 +23,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="..\..\Config\**\*">
+      <Link>Config\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="QRCoder" Version="1.4.3" />
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
   </ItemGroup>

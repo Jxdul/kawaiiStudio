@@ -140,7 +140,6 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 ## Remaining work (from `specifications.txt`)
 
 - Finish payment flow: richer cash events (inserted/jam), disable intake after paid, and harden card provider errors.
-- Pricing should be per template type (2x6_4slots, 4x6_2slots/4slots/6slots) rather than size-only.
 - Capture needs video recording, robust disconnect handling, and per-screen timer tuning.
 - Upload hooks, QR destination hosting, and print queue integration are not implemented.
 - Config parsing for `config/app.json` and `config/pricing.json` is not implemented.

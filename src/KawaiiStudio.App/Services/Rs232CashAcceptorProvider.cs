@@ -11,7 +11,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private const int BaudRate = 9600;
     private const int ReadTimeoutMilliseconds = 500;
     private const int WriteTimeoutMilliseconds = 500;
-    private const int PollIntervalMilliseconds = 500;
+    private const int PollIntervalMilliseconds = 300;
 
     private const byte CommandAck = 0x02;
     private const byte CommandEnable = 0x3E;
@@ -34,8 +34,10 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
     private readonly string _portName;
     private readonly HashSet<int> _allowedBills;
+    private readonly bool _logAllBytes;
     private readonly object _writeLock = new();
     private readonly object _stateLock = new();
+    private TaskCompletionSource<bool>? _connectTcs;
     private SerialPort? _port;
     private CancellationTokenSource? _readCts;
     private Task? _readTask;
@@ -46,18 +48,23 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private bool? _lastAppliedAccepting;
     private int? _pendingAmount;
     private string? _pendingRejectReason;
+    private bool _pendingAccepted;
     private decimal _remainingAmount;
+    private decimal? _lastLoggedRemaining;
 
-    public Rs232CashAcceptorProvider(string portName, IEnumerable<int>? allowedBills = null)
+    public Rs232CashAcceptorProvider(string portName, IEnumerable<int>? allowedBills = null, bool logAllBytes = false)
     {
         _portName = portName;
         _allowedBills = NormalizeAllowedBills(allowedBills);
+        _logAllBytes = logAllBytes;
     }
 
     public bool IsConnected { get; private set; }
 
     public event EventHandler<CashAcceptorEventArgs>? BillAccepted;
     public event EventHandler<CashAcceptorEventArgs>? BillRejected;
+
+    private bool IsPortOpen => _port is not null && _port.IsOpen;
 
     public Task<bool> ConnectAsync(CancellationToken cancellationToken)
     {
@@ -66,7 +73,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             return Task.FromResult(true);
         }
 
-        return Task.Run(ConnectInternal, cancellationToken);
+        return Task.Run(() => ConnectInternal(cancellationToken), cancellationToken);
     }
 
     public Task DisconnectAsync(CancellationToken cancellationToken)
@@ -87,13 +94,15 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             _acceptingEnabled = _remainingAmount > 0m;
         }
 
+        LogRemainingAmount();
         ApplyAcceptanceState(force: false);
     }
 
-    private bool ConnectInternal()
+    private bool ConnectInternal(CancellationToken cancellationToken)
     {
         try
         {
+            KawaiiStudio.App.App.Log($"CASH_CONNECT port={_portName}");
             var port = new SerialPort(_portName, BaudRate, Parity.Even, 8, StopBits.One)
             {
                 Handshake = Handshake.None,
@@ -103,16 +112,30 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
             port.Open();
             _port = port;
+            ResetProtocolState();
+            IsConnected = false;
             _readCts = new CancellationTokenSource();
             _readTask = Task.Run(() => ReadLoop(_readCts.Token));
             _pollTimer = new Timer(_ => SendByte(CommandPoll), null, PollIntervalMilliseconds, PollIntervalMilliseconds);
-            IsConnected = true;
 
-            SendByte(CommandEnable);
-            return true;
+            ApplyAcceptanceState(force: true);
+
+            if (!cancellationToken.CanBeCanceled)
+            {
+                return true;
+            }
+
+            var connected = WaitForConnection(cancellationToken);
+            if (!connected)
+            {
+                DisconnectInternal();
+            }
+
+            return connected;
         }
         catch
         {
+            KawaiiStudio.App.App.Log("CASH_CONNECT_FAILED");
             DisconnectInternal();
             return false;
         }
@@ -120,11 +143,12 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
     private void DisconnectInternal()
     {
-        if (!IsConnected && _port is null)
+        if (_port is null)
         {
             return;
         }
 
+        KawaiiStudio.App.App.Log("CASH_DISCONNECT");
         try
         {
             SendByte(CommandDisable);
@@ -156,20 +180,75 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         }
 
         IsConnected = false;
-        ResetState();
+        ClearConnectWaiter(false);
+        ResetProtocolState();
     }
 
-    private void ResetState()
+    private void ResetProtocolState()
     {
         lock (_stateLock)
         {
             _expectBillType = false;
             _handshakeComplete = false;
-            _acceptingEnabled = false;
             _lastAppliedAccepting = null;
             _pendingAmount = null;
             _pendingRejectReason = null;
+            _pendingAccepted = false;
         }
+
+        _lastLoggedRemaining = null;
+    }
+
+    private bool WaitForConnection(CancellationToken cancellationToken)
+    {
+        TaskCompletionSource<bool> waiter;
+        lock (_stateLock)
+        {
+            if (IsConnected)
+            {
+                return true;
+            }
+
+            waiter = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _connectTcs = waiter;
+        }
+
+        using var registration = cancellationToken.Register(() => waiter.TrySetResult(false));
+        var result = waiter.Task.GetAwaiter().GetResult();
+
+        lock (_stateLock)
+        {
+            if (ReferenceEquals(_connectTcs, waiter))
+            {
+                _connectTcs = null;
+            }
+        }
+
+        return result;
+    }
+
+    private void MarkConnected()
+    {
+        if (IsConnected)
+        {
+            return;
+        }
+
+        IsConnected = true;
+        KawaiiStudio.App.App.Log("CASH_CONNECTED");
+        ClearConnectWaiter(true);
+    }
+
+    private void ClearConnectWaiter(bool connected)
+    {
+        TaskCompletionSource<bool>? waiter;
+        lock (_stateLock)
+        {
+            waiter = _connectTcs;
+            _connectTcs = null;
+        }
+
+        waiter?.TrySetResult(connected);
     }
 
     private void ReadLoop(CancellationToken token)
@@ -208,17 +287,26 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
     private void HandleByte(byte value)
     {
-        if (ShouldLogRxByte(value))
+        LogRx(value);
+
+        if (IsConnectionByte(value))
         {
-            KawaiiStudio.App.App.Log($"CASH_RX byte=0x{value:X2}");
+            MarkConnected();
         }
 
         if (value == EventPowerUp)
         {
-            _handshakeComplete = false;
+            lock (_stateLock)
+            {
+                _handshakeComplete = false;
+                _expectBillType = false;
+                _pendingAmount = null;
+                _pendingRejectReason = null;
+                _pendingAccepted = false;
+            }
             KawaiiStudio.App.App.Log("CASH_HANDSHAKE_START");
             SendByte(CommandAck);
-            SendByte(CommandEnable);
+            ApplyAcceptanceState(force: true);
             return;
         }
 
@@ -239,7 +327,11 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             lock (_stateLock)
             {
                 _expectBillType = true;
+                _pendingAmount = null;
+                _pendingRejectReason = null;
+                _pendingAccepted = false;
             }
+            KawaiiStudio.App.App.Log("CASH_BILL_VALIDATED");
             return;
         }
 
@@ -266,12 +358,19 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             HandleFault(value);
             return;
         }
+
+        if (IsStatusByte(value))
+        {
+            HandleStatus(value);
+            return;
+        }
     }
 
     private void HandleBillType(byte value)
     {
-        int amount = 0;
+        int? amount = null;
         string? rejectReason = null;
+        bool shouldAccept;
 
         lock (_stateLock)
         {
@@ -281,6 +380,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             }
 
             _expectBillType = false;
+            _pendingAccepted = false;
             if (BillTypeMap.TryGetValue(value, out var mappedAmount))
             {
                 amount = mappedAmount;
@@ -292,7 +392,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
                 {
                     rejectReason = "invalid_amount";
                 }
-                else if (_allowedBills.Count > 0 && !_allowedBills.Contains(amount))
+                else if (_allowedBills.Count > 0 && !_allowedBills.Contains(amount.Value))
                 {
                     rejectReason = "unsupported_denomination";
                 }
@@ -300,7 +400,7 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
                 {
                     rejectReason = "no_balance_due";
                 }
-                else if (amount > _remainingAmount)
+                else if (amount.Value > _remainingAmount)
                 {
                     rejectReason = "overpayment";
                 }
@@ -312,14 +412,19 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
             _pendingAmount = amount;
             _pendingRejectReason = rejectReason;
+            _pendingAccepted = rejectReason is null && amount.HasValue && amount.Value > 0;
+            shouldAccept = _pendingAccepted;
         }
 
-        if (rejectReason is null)
+        if (shouldAccept)
         {
+            KawaiiStudio.App.App.Log($"CASH_ESCROW_DECISION action=accept amount={amount}");
             SendByte(CommandAck);
         }
         else
         {
+            var reason = string.IsNullOrWhiteSpace(rejectReason) ? "unknown" : rejectReason;
+            KawaiiStudio.App.App.Log($"CASH_ESCROW_DECISION action=reject amount={amount} reason={reason}");
             SendByte(CommandReject);
         }
     }
@@ -327,14 +432,18 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private void HandleStacked()
     {
         int? amount;
+        bool accepted;
         lock (_stateLock)
         {
             amount = _pendingAmount;
             _pendingAmount = null;
             _pendingRejectReason = null;
+            accepted = _pendingAccepted;
+            _pendingAccepted = false;
         }
 
-        if (amount is null || amount <= 0)
+        KawaiiStudio.App.App.Log($"CASH_STACKED amount={amount}");
+        if (!accepted || amount is null || amount <= 0)
         {
             return;
         }
@@ -352,8 +461,10 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             reason = _pendingRejectReason ?? "rejected";
             _pendingAmount = null;
             _pendingRejectReason = null;
+            _pendingAccepted = false;
         }
 
+        KawaiiStudio.App.App.Log($"CASH_REJECTED amount={amount} reason={reason}");
         BillRejected?.Invoke(this, new CashAcceptorEventArgs(amount, reason));
     }
 
@@ -363,8 +474,10 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
         lock (_stateLock)
         {
             _acceptingEnabled = false;
+            _expectBillType = false;
             _pendingAmount = null;
             _pendingRejectReason = null;
+            _pendingAccepted = false;
         }
 
         ApplyAcceptanceState(force: true);
@@ -374,11 +487,9 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private void ApplyAcceptanceState(bool force)
     {
         bool accepting;
-        bool handshakeComplete;
         lock (_stateLock)
         {
             accepting = _acceptingEnabled;
-            handshakeComplete = _handshakeComplete;
             if (!force && _lastAppliedAccepting.HasValue && _lastAppliedAccepting.Value == accepting)
             {
                 return;
@@ -387,11 +498,12 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             _lastAppliedAccepting = accepting;
         }
 
-        if (!IsConnected || !handshakeComplete)
+        if (!IsPortOpen)
         {
             return;
         }
 
+        KawaiiStudio.App.App.Log($"CASH_ACCEPTING enabled={accepting}");
         SendByte(accepting ? CommandEnable : CommandDisable);
     }
 
@@ -408,15 +520,29 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             port.Write(new[] { value }, 0, 1);
         }
 
-        if (value != CommandPoll)
-        {
-            KawaiiStudio.App.App.Log($"CASH_TX byte=0x{value:X2}");
-        }
+        LogTx(value);
     }
 
     private static bool IsBillType(byte value)
     {
         return value >= 0x40 && value <= 0x44;
+    }
+
+    private static bool IsStatusByte(byte value)
+    {
+        return value == CommandEnable || value == CommandDisable;
+    }
+
+    private static bool IsConnectionByte(byte value)
+    {
+        return value == EventPowerUp
+            || value == EventHandshakeComplete
+            || value == EventBillValidated
+            || value == EventStacked
+            || value == EventRejected
+            || IsBillType(value)
+            || IsStatusByte(value)
+            || (value >= 0x20 && value <= 0x2A);
     }
 
     private static bool ShouldLogRxByte(byte value)
@@ -427,7 +553,56 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
             || value == EventStacked
             || value == EventRejected
             || IsBillType(value)
+            || IsStatusByte(value)
             || (value >= 0x20 && value <= 0x2A);
+    }
+
+    private void HandleStatus(byte value)
+    {
+        lock (_stateLock)
+        {
+            _lastAppliedAccepting = value == CommandEnable;
+        }
+
+        var status = value == CommandEnable ? "enabled" : "disabled";
+        KawaiiStudio.App.App.Log($"CASH_STATUS {status}");
+    }
+
+    private void LogRx(byte value)
+    {
+        if (!_logAllBytes && !ShouldLogRxByte(value))
+        {
+            return;
+        }
+
+        KawaiiStudio.App.App.Log($"CASH_RX byte=0x{value:X2}");
+    }
+
+    private void LogTx(byte value)
+    {
+        if (!_logAllBytes && value == CommandPoll)
+        {
+            return;
+        }
+
+        KawaiiStudio.App.App.Log($"CASH_TX byte=0x{value:X2}");
+    }
+
+    private void LogRemainingAmount()
+    {
+        decimal remaining;
+        bool accepting;
+        lock (_stateLock)
+        {
+            remaining = _remainingAmount;
+            accepting = _acceptingEnabled;
+        }
+
+        if (_logAllBytes || !_lastLoggedRemaining.HasValue || _lastLoggedRemaining.Value != remaining)
+        {
+            _lastLoggedRemaining = remaining;
+            KawaiiStudio.App.App.Log($"CASH_REMAINING amount={remaining:0.00} accepting={accepting}");
+        }
     }
 
     private static HashSet<int> NormalizeAllowedBills(IEnumerable<int>? allowedBills)

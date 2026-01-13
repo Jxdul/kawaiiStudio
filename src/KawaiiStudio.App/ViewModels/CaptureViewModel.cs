@@ -15,7 +15,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
     private const int ShotCount = 8;
     private const int MaxCountdownSeconds = 30;
     private static readonly TimeSpan LiveViewInterval = TimeSpan.FromMilliseconds(33);
-    private static readonly TimeSpan PreviewFrameInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan PreviewFrameInterval = TimeSpan.FromMilliseconds(200);
 
     private readonly NavigationService _navigation;
     private readonly SessionService _session;
@@ -296,7 +296,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
             CaptureButtonText = "Continue";
             KawaiiStudio.App.App.Log("CAPTURE_SEQUENCE_COMPLETE");
             StopLiveView();
-            _navigation.Navigate("review");
+            _navigation.Navigate("processing");
         }
         catch (OperationCanceledException)
         {

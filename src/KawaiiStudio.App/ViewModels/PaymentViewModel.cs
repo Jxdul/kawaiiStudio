@@ -696,6 +696,11 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             "intake_disabled" => "Cash reader intake disabled.",
             "not_connected" => "Cash reader not connected.",
             "manual_insert_disabled" => "Cash reader disabled.",
+            "overpayment" => "Bill exceeds remaining balance.",
+            "unsupported_denomination" => "Unsupported denomination.",
+            "invalid_amount" => "Invalid bill amount.",
+            "no_balance_due" => "No balance due.",
+            "rejected" => "Bill rejected.",
             _ => string.Empty
         };
     }

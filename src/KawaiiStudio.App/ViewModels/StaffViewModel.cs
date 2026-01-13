@@ -327,16 +327,16 @@ public sealed class StaffViewModel : ScreenViewModelBase
     {
         return new[]
         {
-            ("PRICE1_26", "2x6 (2 prints)", "10"),
-            ("PRICE2_26", "2x6 (4 prints)", "20"),
-            ("PRICE3_26", "2x6 (6 prints)", "30"),
-            ("PRICE4_26", "2x6 (8 prints)", "40"),
-            ("PRICE5_26", "2x6 (10 prints)", "50"),
-            ("PRICE1_46", "4x6 (2 prints, any layout)", "15"),
-            ("PRICE2_46", "4x6 (4 prints, any layout)", "30"),
-            ("PRICE3_46", "4x6 (6 prints, any layout)", "45"),
-            ("PRICE4_46", "4x6 (8 prints, any layout)", "60"),
-            ("PRICE5_46", "4x6 (10 prints, any layout)", "75")
+            ("PRICE1_26", "2x6 (2 prints, any template)", "10"),
+            ("PRICE2_26", "2x6 (4 prints, any template)", "20"),
+            ("PRICE3_26", "2x6 (6 prints, any template)", "30"),
+            ("PRICE4_26", "2x6 (8 prints, any template)", "40"),
+            ("PRICE5_26", "2x6 (10 prints, any template)", "50"),
+            ("PRICE1_46", "4x6 (2 prints, any style)", "15"),
+            ("PRICE2_46", "4x6 (4 prints, any style)", "30"),
+            ("PRICE3_46", "4x6 (6 prints, any style)", "45"),
+            ("PRICE4_46", "4x6 (8 prints, any style)", "60"),
+            ("PRICE5_46", "4x6 (10 prints, any style)", "75")
         };
     }
 

@@ -49,6 +49,9 @@
     <DataTemplate DataType="{x:Type vm:CaptureViewModel}">
       <views:CaptureView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ProcessingViewModel}">
+      <views:ProcessingView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:ReviewViewModel}">
       <views:ReviewView />
     </DataTemplate>

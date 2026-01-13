@@ -1,0 +1,478 @@
+TP70 (TOP VME TP Series / TP70) — RS232 Coding Notes (LLM-friendly)
+==================================================================
+
+Goal
+----
+This file is meant to give an LLM (or a developer) enough structured, practical information to:
+- Wire a TP70 bill acceptor to a Windows PC via serial,
+- Configure the serial port,
+- Implement a working TX/RX state machine for the single‑byte protocol you provided,
+- Log events and handle errors,
+- Extend the code later (add more denominations, statuses, etc.).
+
+IMPORTANT HONESTY NOTE
+----------------------
+The official TP Series user guide you uploaded includes:
+- electrical specs,
+- harness/pinout for RS232,
+- a “Standard RS232 Protocol” electrical diagram,
+- DIP switch note,
+BUT it does NOT include the actual serial command bytes / protocol frames.
+
+So, the “TX/RX byte protocol” section below is based on the byte-level protocol YOU PROVIDED earlier
+(as an observed/reverse-engineered protocol used by your validator / host code), not from the PDF.
+
+Where the manual is the source, I label it explicitly (with page references in plain English).
+
+--------------------------------------------------------------------
+1) Hardware & Wiring (from the TP Series User Guide PDF)
+--------------------------------------------------------------------
+
+1.1 Interface & general electrical specs
+- The TP Series supports multiple interfaces, including Pulse and RS232. (Manual: “Interface Pulse/RS232 …”)
+- Power source: 12V DC ±5%
+- Standby: 350mA / 4.2W
+- Motor lock: 2A / 24W
+(Manual: Chapter 2 “Specifications”, page 2 in the PDF’s numbering; it appears near the “2. Specifications” section.)
+
+1.2 RS232 harness / pinout (WEL-R7U06)
+The manual shows a harness named WEL-R7U06 for data communication.
+
+DB9 (D-SUB 9F) side (from the harness diagram):
+- Pin 2: TXD
+- Pin 3: RXD
+- Pin 5: GND
+
+TMT 2*4 connector (bill acceptor side) color/pin define (from the harness diagram):
+- Pin 1 (BLUE):  GND
+- Pin 6 (WHITE): VCC
+- Pin 7 (BLACK): RXD
+- Pin 8 (PURPLE): TXD
+
+Practical wiring rule:
+- Host RX  <— Validator TX
+- Host TX  —> Validator RX
+- GND connected between host and validator.
+
+1.3 “Standard RS232 Protocol” diagram shows +5V logic-level signaling
+The manual’s “Standard RS232 Protocol” picture shows +5VDC and a 1K resistor on the customer side.
+That strongly suggests the TP’s “RS232” wiring is not traditional ±12V RS-232 line levels on the TMT header;
+it’s more like TTL/CMOS serial (5V-ish) that may need:
+- a proper level shifter (MAX232-type) if you want real RS232 voltage, OR
+- a USB-to-TTL serial adapter (careful: 5V vs 3.3V compatibility).
+
+SAFETY / DON’T FRY THINGS:
+- Do NOT connect the validator’s VCC pin to your PC’s serial lines.
+- Always share GND.
+- Confirm the voltage levels (5V vs 3.3V) before connecting a USB‑TTL adapter.
+- If you’re using a classic PC DB9 RS232 port, use a level shifter (because classic RS232 is ± voltages).
+
+1.4 DIP switches
+Manual says DIP switches on the TP series vary by currency/output format and the bottom DIP is for interface settings.
+However, the actual DIP table is not included in the user guide PDF; it says to use the “TP Series DIP Switch Setting Guide”.
+
+Action:
+- Set DIP to RS232 mode (and any “harness enable” or similar settings) using your DIP guide.
+
+--------------------------------------------------------------------
+2) RS232 TX/RX Protocol (single-byte) — from YOUR PROVIDED SPEC
+--------------------------------------------------------------------
+
+This is the byte protocol you pasted earlier as “Full protocol spec (what you can code)”.
+
+2.1 Byte commands (Host -> Validator)
+- 0x02 = Accept / Enable / “Hi” (same value used for multiple meanings depending on state)
+- 0x0F = Reject escrow bill
+- 0x0C = Status request
+- 0x5E = Disable bill intake (“입수금지”)
+- 0x3E = Enable bill intake (“입수가능”)
+- 0x30 = Reset
+
+2.2 Byte events (Validator -> Host)
+
+Connection / online:
+- 0x3E or 0x3F = device online/handshake event (meaning: serial connected / device alive)
+
+Bill flow:
+- 0x81 = “bill read event is coming”
+- 0x40 = $5 detected (escrow)
+- 0x41 = $10 detected (escrow)
+
+Host must respond after 0x40/0x41:
+- Send 0x02 to accept (stack)
+- Send 0x0F to reject (return)
+
+Completion:
+- 0x10 = stack/accept completed
+  - If previous escrow was 0x40 => commit $5
+  - If previous escrow was 0x41 => commit $10
+
+Errors (as provided, truncated in original snippet):
+- 0x11 = (some error event after accept attempt; exact meaning unknown from snippet)
+  - Treat as an error/status byte and log it.
+
+2.3 State machine (recommended)
+You will have fewer bugs if you implement an explicit state machine.
+
+States:
+A) DISCONNECTED / WAIT_ONLINE
+   - Wait for 0x3E or 0x3F from device.
+   - When received, mark “connected”.
+   - Optionally send 0x02 (“Hi/Enable”) once.
+
+B) IDLE_READY
+   - Device is online and ready to accept bills.
+   - Optionally send 0x3E to enable intake.
+   - Optionally poll with 0x0C if you want periodic status.
+
+C) BILL_PENDING
+   - After receiving 0x81, expect a denomination byte next (0x40/0x41).
+   - If you receive 0x40 or 0x41, store it as last_escrow.
+   - Immediately decide accept vs reject:
+       - if you want to accept: send 0x02
+       - else: send 0x0F
+   - Start an “await completion” timer (e.g., 2–5 seconds).
+
+D) AWAIT_STACK_COMPLETE
+   - Wait for:
+       - 0x10 => stacked successfully; commit credit based on last_escrow; go back to IDLE_READY
+       - 0x11 or other unexpected => log error, maybe reset/disable intake, return to IDLE_READY
+       - timeout => assume failure; log; maybe send 0x30 reset and go back to WAIT_ONLINE
+
+Notes:
+- Some devices may send 0x40/0x41 without a preceding 0x81. Your parser should tolerate that.
+- Some devices may send multiple bytes quickly; use a buffer and process byte-by-byte.
+
+2.4 Timing & robustness recommendations
+- After connecting, wait ~300–1000 ms before sending commands (some validators boot slowly).
+- If you send 0x3E enable intake and get no response, that might be normal.
+- If you get repeated 0x3E/0x3F online signals mid-run, treat them as “still alive”.
+- For noisy links, implement a simple debouncer:
+   - Don’t accept a second escrow byte while waiting for 0x10 from the first.
+
+--------------------------------------------------------------------
+3) Windows Coding — recommended approach
+--------------------------------------------------------------------
+
+3.1 Language choice
+Best “no extra installs” options on Windows:
+- C# (.NET) using System.IO.Ports.SerialPort (works without pip)
+- C++ using Win32 CreateFile on COM ports (more complex)
+
+Python requires pySerial (pip). Since you’ve said “no pip” previously, C# is the simplest.
+
+3.2 Serial port settings (what to try)
+The PDF does not specify baud/parity.
+Your earlier reverse‑engineered single‑byte protocol likely runs at a common default like:
+- 9600 baud, 8 data bits, no parity, 1 stop bit (8N1), no flow control
+
+BUT you must confirm:
+- Try 9600 8N1 first.
+- If garbage bytes, try other common rates: 19200, 38400.
+- If still wrong, confirm voltage levels/adapter.
+
+--------------------------------------------------------------------
+4) C# Example (Console App) — implements the above state machine
+--------------------------------------------------------------------
+
+Copy/paste into a new .NET console project (e.g., .NET 6+).
+Change COM port name to match yours (Device Manager -> Ports).
+
+Features:
+- Logs all RX bytes in hex,
+- Tracks last escrow,
+- Auto-accepts bills (you can change to reject),
+- Commits credit on 0x10,
+- Sends enable intake on connect.
+
+----- BEGIN C# CODE -----
+
+using System;
+using System.IO.Ports;
+using System.Threading;
+
+enum TpState
+{
+    WaitOnline,
+    IdleReady,
+    BillPending,
+    AwaitStackComplete
+}
+
+class Program
+{
+    static SerialPort _port;
+    static TpState _state = TpState.WaitOnline;
+
+    static byte? _lastEscrow = null; // 0x40=$5, 0x41=$10 (from your spec)
+    static DateTime _awaitDeadline;
+
+    static int _creditCents = 0;
+
+    static void Main(string[] args)
+    {
+        string comPort = args.Length > 0 ? args[0] : "COM3";
+
+        _port = new SerialPort(comPort, 9600, Parity.None, 8, StopBits.One);
+        _port.Handshake = Handshake.None;
+        _port.ReadTimeout = 200;
+        _port.WriteTimeout = 200;
+
+        _port.DataReceived += OnDataReceived;
+
+        Console.WriteLine($"Opening {comPort} ...");
+        _port.Open();
+        Console.WriteLine("Port opened. Waiting for device online byte (0x3E/0x3F).");
+
+        while (true)
+        {
+            // timeout handling for AwaitStackComplete
+            if (_state == TpState.AwaitStackComplete && DateTime.UtcNow > _awaitDeadline)
+            {
+                Console.WriteLine("TIMEOUT waiting for 0x10 (stack complete). Sending reset (0x30) and returning to WaitOnline.");
+                SafeWriteByte(0x30);
+                _state = TpState.WaitOnline;
+                _lastEscrow = null;
+            }
+
+            Thread.Sleep(50);
+        }
+    }
+
+    static void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
+    {
+        try
+        {
+            while (_port.BytesToRead > 0)
+            {
+                int raw = _port.ReadByte();
+                if (raw < 0) return;
+
+                byte b = (byte)raw;
+                Console.WriteLine($"RX: 0x{b:X2}  (state={_state})");
+
+                HandleByte(b);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Read error: " + ex.Message);
+        }
+    }
+
+    static void HandleByte(byte b)
+    {
+        // Online bytes can occur anytime; treat as keep-alive.
+        if (b == 0x3E || b == 0x3F)
+        {
+            if (_state == TpState.WaitOnline)
+            {
+                Console.WriteLine("Device online/handshake received.");
+                // Optional: say hi/enable
+                SafeWriteByte(0x02); // “Hi/Enable” (from your spec)
+                SafeWriteByte(0x3E); // Enable intake
+                _state = TpState.IdleReady;
+            }
+            return;
+        }
+
+        switch (_state)
+        {
+            case TpState.WaitOnline:
+                // Ignore other bytes until online signal arrives.
+                break;
+
+            case TpState.IdleReady:
+                if (b == 0x81)
+                {
+                    _state = TpState.BillPending;
+                    return;
+                }
+
+                // Some devices may send escrow directly without 0x81:
+                if (b == 0x40 || b == 0x41)
+                {
+                    _lastEscrow = b;
+                    DecideAcceptOrReject();
+                    _state = TpState.AwaitStackComplete;
+                    _awaitDeadline = DateTime.UtcNow.AddSeconds(5);
+                    return;
+                }
+
+                // Unknown byte
+                Console.WriteLine("IdleReady: unexpected byte, logged.");
+                break;
+
+            case TpState.BillPending:
+                if (b == 0x40 || b == 0x41)
+                {
+                    _lastEscrow = b;
+                    DecideAcceptOrReject();
+                    _state = TpState.AwaitStackComplete;
+                    _awaitDeadline = DateTime.UtcNow.AddSeconds(5);
+                }
+                else
+                {
+                    Console.WriteLine("BillPending: unexpected byte, returning to IdleReady.");
+                    _state = TpState.IdleReady;
+                }
+                break;
+
+            case TpState.AwaitStackComplete:
+                if (b == 0x10)
+                {
+                    CommitCredit();
+                    _state = TpState.IdleReady;
+                    _lastEscrow = null;
+                    return;
+                }
+                if (b == 0x11)
+                {
+                    Console.WriteLine("Error byte 0x11 received. Not committing credit. Returning to IdleReady.");
+                    _state = TpState.IdleReady;
+                    _lastEscrow = null;
+                    return;
+                }
+
+                // Other bytes: log & ignore
+                Console.WriteLine("AwaitStackComplete: unexpected byte, logged.");
+                break;
+        }
+    }
+
+    static void DecideAcceptOrReject()
+    {
+        // Change this logic as needed.
+        bool accept = true;
+
+        if (accept)
+        {
+            Console.WriteLine($"Escrow: 0x{_lastEscrow:X2}. Sending ACCEPT (0x02).");
+            SafeWriteByte(0x02);
+        }
+        else
+        {
+            Console.WriteLine($"Escrow: 0x{_lastEscrow:X2}. Sending REJECT (0x0F).");
+            SafeWriteByte(0x0F);
+        }
+    }
+
+    static void CommitCredit()
+    {
+        if (_lastEscrow == 0x40) _creditCents += 500;
+        else if (_lastEscrow == 0x41) _creditCents += 1000;
+        else
+        {
+            Console.WriteLine("Stack complete but last escrow unknown. Not committing credit.");
+            return;
+        }
+
+        Console.WriteLine($"STACKED OK. Credit now: {_creditCents/100.0:0.00}");
+    }
+
+    static void SafeWriteByte(byte b)
+    {
+        try
+        {
+            _port.Write(new byte[] { b }, 0, 1);
+            Console.WriteLine($"TX: 0x{b:X2}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Write error: " + ex.Message);
+        }
+    }
+}
+
+----- END C# CODE -----
+
+--------------------------------------------------------------------
+5) Extending / Adapting
+--------------------------------------------------------------------
+
+5.1 Adding more denominations
+Right now your observed device uses:
+- 0x40 = $5 escrow
+- 0x41 = $10 escrow
+
+If your TP70 is configured for more bills, you may see additional codes.
+Strategy:
+- Log every unknown byte.
+- When a new code appears consistently right after 0x81, map it to a value.
+
+5.2 Status polling
+Your spec includes:
+- 0x0C = status request
+
+If you want polling:
+- In IdleReady, every 1–2 seconds send 0x0C, and log any response bytes.
+
+5.3 Enable/disable intake
+Your spec includes:
+- 0x3E = enable intake
+- 0x5E = disable intake
+
+So, you can:
+- Disable intake during payout or when credit limit reached.
+- Re-enable once ready.
+
+5.4 Reset
+- 0x30 = reset
+Use it when:
+- You hit a timeout waiting for 0x10,
+- You detect repeated error bytes,
+- You want to reinitialize after connection issues.
+
+--------------------------------------------------------------------
+6) Troubleshooting / Maintenance (from manual)
+--------------------------------------------------------------------
+
+Manual LED flash codes indicate hardware issues like:
+- 1 = bill jammed
+- 6 = stacker error or stacker full
+- 7 = motor error
+(Manual “Troubleshooting” section lists LED flash status and corrective actions.)
+
+Keep in mind:
+- In your single-byte serial protocol, you may not get these error details over RX;
+  you might only see a generic error byte (like 0x11) while the front LEDs show the true code.
+
+Maintenance:
+- Clean bill path and sensors periodically (manual “Maintenance” section).
+
+--------------------------------------------------------------------
+7) “Protocol Spec” block (copy/paste friendly)
+--------------------------------------------------------------------
+
+PROTOCOL:
+  host_to_validator:
+    HI_ACCEPT_ENABLE: 0x02
+    REJECT_ESCROW:    0x0F
+    STATUS_REQUEST:   0x0C
+    DISABLE_INTAKE:   0x5E
+    ENABLE_INTAKE:    0x3E
+    RESET:            0x30
+  validator_to_host:
+    ONLINE_1:         0x3E
+    ONLINE_2:         0x3F
+    BILL_EVENT_NEXT:  0x81
+    ESCROW_5:         0x40
+    ESCROW_10:        0x41
+    STACK_COMPLETE:   0x10
+    ERROR_GENERIC:    0x11   # meaning unknown in provided snippet
+
+STATE_MACHINE:
+  WAIT_ONLINE:
+    on (0x3E|0x3F): send 0x02, send 0x3E, -> IDLE_READY
+  IDLE_READY:
+    on 0x81: -> BILL_PENDING
+    on (0x40|0x41): last_escrow=b; send (0x02 or 0x0F); -> AWAIT_STACK_COMPLETE
+  BILL_PENDING:
+    on (0x40|0x41): last_escrow=b; send (0x02 or 0x0F); -> AWAIT_STACK_COMPLETE
+    else: -> IDLE_READY
+  AWAIT_STACK_COMPLETE:
+    on 0x10: commit credit based on last_escrow; -> IDLE_READY
+    on 0x11: log error; -> IDLE_READY
+    on timeout: send 0x30; -> WAIT_ONLINE
+
+END OF FILE

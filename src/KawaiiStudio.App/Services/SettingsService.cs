@@ -28,8 +28,9 @@ public sealed class SettingsService
     public int CameraTimerSeconds => GetInt("CAMERA_TIMER_SECONDS", 3);
     public bool TestMode => GetBool("TEST_MODE", false);
     public IReadOnlyCollection<int> CashDenominations => GetCashDenominations();
+    public bool CashLogAll => GetBool("CASH_LOG_ALL", false);
     public string CardProvider => GetString("CARD_PROVIDER", "simulated");
-    public string StripeTerminalBaseUrl => GetString("STRIPE_TERMINAL_BASE_URL", "http://localhost:4242");
+    public string StripeTerminalBaseUrl => GetString("STRIPE_TERMINAL_BASE_URL", "https://kawaii-studio-server.jxdul.workers.dev");
     public string StripeTerminalReaderId => GetString("STRIPE_TERMINAL_READER_ID", string.Empty);
     public string StripeTerminalLocationId => GetString("STRIPE_TERMINAL_LOCATION_ID", string.Empty);
     public string UploadBaseUrl => GetString("UPLOAD_BASE_URL", string.Empty);
@@ -268,10 +269,11 @@ public sealed class SettingsService
         _values["PRICE5_46"] = "75";
         _values["MAX_QUANTITY"] = "10";
         _values["CASH_DENOMS"] = "5,10,20";
+        _values["CASH_LOG_ALL"] = "false";
         _values["PrintName"] = "DS-RX1";
         _values["cash_COM"] = "COM4";
         _values["CARD_PROVIDER"] = "simulated";
-        _values["STRIPE_TERMINAL_BASE_URL"] = "http://localhost:4242";
+        _values["STRIPE_TERMINAL_BASE_URL"] = "https://kawaii-studio-server.jxdul.workers.dev";
         _values["STRIPE_TERMINAL_READER_ID"] = string.Empty;
         _values["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty;
         _values["UPLOAD_BASE_URL"] = string.Empty;
@@ -320,10 +322,11 @@ public sealed class SettingsService
             ["PRICE5_46"] = "75",
             ["MAX_QUANTITY"] = "10",
             ["CASH_DENOMS"] = "5,10,20",
+            ["CASH_LOG_ALL"] = "false",
             ["PrintName"] = "DS-RX1",
             ["cash_COM"] = "COM4",
             ["CARD_PROVIDER"] = "simulated",
-            ["STRIPE_TERMINAL_BASE_URL"] = "http://localhost:4242",
+            ["STRIPE_TERMINAL_BASE_URL"] = "https://kawaii-studio-server.jxdul.workers.dev",
             ["STRIPE_TERMINAL_READER_ID"] = string.Empty,
             ["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty,
             ["UPLOAD_BASE_URL"] = string.Empty,
@@ -379,7 +382,8 @@ public sealed class SettingsService
             new[]
             {
                 "MAX_QUANTITY",
-                "CASH_DENOMS"
+                "CASH_DENOMS",
+                "CASH_LOG_ALL"
             },
             new[]
             {

@@ -71,6 +71,7 @@ public partial class App : Application
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
         var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, cashAcceptor, cardPayment);
         var captureViewModel = new CaptureViewModel(navigation, session, cameraService, settings, themeCatalog);
+        var processingViewModel = new ProcessingViewModel(navigation, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);
         var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, videoCompiler, uploadService, themeCatalog);
         var printingViewModel = new PrintingViewModel(navigation, session, themeCatalog);
@@ -89,6 +90,7 @@ public partial class App : Application
         navigation.Register("frame", frameViewModel);
         navigation.Register("payment", paymentViewModel);
         navigation.Register("capture", captureViewModel);
+        navigation.Register("processing", processingViewModel);
         navigation.Register("review", reviewViewModel);
         navigation.Register("finalize", finalizeViewModel);
         navigation.Register("printing", printingViewModel);
@@ -127,7 +129,7 @@ public partial class App : Application
         }
 
         Log($"CASH_PROVIDER=rs232 port={settings.CashCom}");
-        return new Rs232CashAcceptorProvider(settings.CashCom, allowedBills);
+        return new Rs232CashAcceptorProvider(settings.CashCom, allowedBills, settings.CashLogAll);
     }
 
     private static ICardPaymentProvider CreateCardPaymentProvider(SettingsService settings)
@@ -404,6 +406,7 @@ public partial class App : Application
         return screen.ToLowerInvariant() switch
         {
             "review" => "finalize",
+            "processing" => "review",
             "finalize" => "printing",
             "printing" => "thank_you",
             "thank_you" => "home",

@@ -10,8 +10,9 @@ namespace KawaiiStudio.App.Services;
 
 public sealed class VideoCompilationService
 {
-    private const int PreviewFrameRate = 6;
+    private const int PreviewFrameRate = 12;
     private const int ProcessTimeoutSeconds = 60;
+    private const string WindowsFfmpegPath = @"C:\Program Files\ffmpeg\bin\ffmpeg.exe";
     private readonly string? _ffmpegPath;
 
     public VideoCompilationService(AppPaths appPaths)
@@ -120,6 +121,11 @@ public sealed class VideoCompilationService
 
     private static string? ResolveFfmpegPath(string appRoot)
     {
+        if (File.Exists(WindowsFfmpegPath))
+        {
+            return WindowsFfmpegPath;
+        }
+
         if (string.IsNullOrWhiteSpace(appRoot))
         {
             return null;

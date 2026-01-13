@@ -167,7 +167,7 @@ UI:
 Rules:
 
 * Only even numbers allowed (hard validation).
-* Pricing depends on size (+ style if 4×6; see §8).
+* Pricing depends on size only (2×6 vs 4×6).
 
 ---
 
@@ -228,7 +228,7 @@ UI:
 
   * **Cash**
   * **Card** (Stripe Terminal when enabled in config)
-* Price summary (size, style, quantity)
+* Price summary (size, style, quantity) with pricing based on size only
 * “Cancel” (before payment confirmation only)
 
 Rules:
@@ -353,14 +353,12 @@ Auto-return:
 * Quantity must be **even** for both 2×6 and 4×6.
 * Pricing is configured in staff menu and persisted to config.
 
-### Recommended pricing model
+### Pricing model (size-only)
 
-* Price per “pair” (2 prints) for each product:
+* Price per “pair” (2 prints) for each size:
 
-  * 2×6 (4-slot template)
-  * 4×6 Style A (2-slot)
-  * 4×6 Style B (4-slot)
-  * 4×6 Style C (6-slot)
+  * 2×6 (all templates)
+  * 4×6 (all styles)
 
 Example:
 
@@ -633,10 +631,8 @@ JSON configs below are the long-term target.
 
 ```json
 {
-  "2x6_4slots": { "pricePerPair": 8.00 },
-  "4x6_2slots": { "pricePerPair": 8.00 },
-  "4x6_4slots": { "pricePerPair": 10.00 },
-  "4x6_6slots": { "pricePerPair": 12.00 },
+  "2x6": { "pricePerPair": 8.00 },
+  "4x6": { "pricePerPair": 10.00 },
   "maxQuantity": 8
 }
 ```

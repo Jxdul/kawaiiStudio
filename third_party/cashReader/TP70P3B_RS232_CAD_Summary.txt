@@ -1,173 +1,199 @@
-TP70P3B (DST/TOPVME TP70 Series) — RS232 Integration Notes (CAD $5/$10)
+TP70P3B RS232 Bill Validator — LLM-Friendly Integration Spec (CAD $5 / $10)
 ===============================================================================
 
-1) What you have
----------------
-- Device family: TOPVME / DST “TP Series” bill acceptor (TP70P3B variant)
-- Interfaces supported (model-dependent): Pulse + RS232 (and sometimes ccTalk depending on config)
-- Your current accepted bills: CAD $5 and CAD $10 only (confirmed by test)
-- Confirmed output/protocol mode: RS232 Protocol (not Pulse)
+GOAL
+----
+Integrate a TP70P3B-family bill validator configured in RS232 protocol mode.
+This unit accepts ONLY CAD $5 and CAD $10.
 
-2) Physical / wiring essentials
--------------------------------
-Even though you’re already wired, keep this handy for troubleshooting.
-
-RS232 data pins (common harness reference):
-- Pin 2 = TXD
-- Pin 3 = RXD
-- Pin 5 = GND
-
-Notes:
-- TP-series units can have multiple DIP switch banks. One bank may control “accepted bills / pulse settings”,
-  while another (often on the bottom) controls interface/protocol mode (RS232 vs Pulse).
-- After changing DIP switches, power-cycle/reset the validator so it re-reads the switch state.
-
-3) Serial port settings (Windows COM port)
-------------------------------------------
-Use asynchronous full duplex RS-232:
-- Baud rate: 9600
-- Data bits: 8
-- Parity: EVEN
-- Stop bits: 1
-- Flow control: None
-
-(Short form: 9600 8E1, no RTS/CTS, no XON/XOFF)
-
-4) Protocol you can code (ICT RS232 “104U”-style)
-------------------------------------------------
-Everything is single-byte commands/events (byte-oriented, not ASCII).
-
-4.1 Power-up handshake
-----------------------
-Validator -> Host:
-- 0x80  : Power supply on / power-up notice
-
-Host -> Validator (must send within ~2 seconds):
-- 0x02  : ACK / “Hi” for the power-up sequence
-
-Validator -> Host:
-- 0x8F  : Handshake complete
-
-Important practical note:
-- If your app starts after the validator is already powered, you may not see 0x80/0x8F.
-  In that case, treat “connected” as: COM port open + validator responds sensibly to poll (0x0C),
-  and keep it enabled (0x3E).
-
-4.2 Bill escrow flow (main loop)
---------------------------------
-Validator -> Host:
-1) 0x81  : “Bill validated event incoming”
-2) 0x40..0x44 : Bill Type 1..5 (depends on currency dataset + acceptance settings)
-
-Host -> Validator (reply within ~5 seconds):
-- 0x02  : Accept / stack bill
-- 0x0F  : Reject bill (return to user)
-- 0x18  : Hold in escrow (keep bill held; later you send 0x02 or 0x0F)
-
-Validator -> Host (result):
-- 0x10  : Stacked/accepted complete   -> CREDIT NOW
-- 0x11  : Rejected complete           -> DO NOT CREDIT
-
-Timeout behavior:
-- If host does not respond in time, validator can auto-reject and repeated timeouts may lead to a
-  “communication failure” state. Your program should always respond promptly.
-
-4.3 Enable / Disable intake
+KEY FACTS (HIGH CONFIDENCE)
 ---------------------------
-Host -> Validator:
-- 0x3E  : Enable bill intake
-- 0x5E  : Inhibit/disable bill intake
+- Transport: RS232 via Windows COM port (PCIe RS232 adapter).
+- Serial config: 9600 baud, 8 data bits, EVEN parity, 1 stop bit, no flow control.  (9600 8E1)
+- Protocol: single-byte commands/events (byte-oriented, not ASCII).
+- Accepted denominations (your device): CAD $5 and CAD $10 only.
+- Bill type mapping (confirmed by your testing):
+    0x40 -> CAD $5   (Bill Type 1)
+    0x41 -> CAD $10  (Bill Type 2)
 
-4.4 Status polling
-------------------
-Host -> Validator:
-- 0x0C  : Request status
+CONCEPTS
+--------
+- "Escrow": validator holds the bill and waits for host decision.
+- Host must respond quickly (within a few seconds) or the validator may auto-reject.
 
-Validator -> Host:
-- May respond with enabled/inhibited status bytes, or an error/status code (see section 6)
+I/O OVERVIEW
+============
+HOST -> VALIDATOR (TX commands)
+------------------------------
+All are 1 byte:
 
-4.5 Reset
----------
-Host -> Validator:
-- 0x30  : Reset (typically followed by power-up handshake again)
+0x3E : ENABLE intake (accept bills)
+0x5E : DISABLE intake (inhibit / stop taking bills)
+0x0C : STATUS REQUEST (poll)
+0x02 : ACCEPT / STACK bill (also used as power-up ACK)
+0x0F : REJECT escrow bill (send bill back)
+0x18 : HOLD bill in escrow (optional; later send 0x02 or 0x0F)
+0x30 : RESET validator
 
-5) CAD mapping ($5 / $10)
+VALIDATOR -> HOST (RX events/status)
+-----------------------------------
+All are 1 byte:
+
+Power/Handshake:
+0x80 : Power-up notice (validator booted)
+0x8F : Handshake complete (after host ACK)
+
+Bill flow:
+0x81 : "Bill validated event incoming" (next byte will be bill type)
+0x40..0x44 : Bill Type 1..5 (your unit uses 0x40 and 0x41)
+0x10 : Stack/accept completed (credit should be committed now)
+0x11 : Reject completed (no credit)
+
+Fault/status codes (often from polling 0x0C):
+0x20 : Motor failure
+0x21 : Checksum error
+0x22 : Bill jam
+0x23 : Bill removed
+0x24 : Stacker open
+0x25 : Sensor problem
+0x27 : "Bill fish" / anti-fraud condition (vendor-specific wording)
+0x28 : Stacker problem
+0x29 : Bill reject
+0x2A : Invalid command
+
+Normal poll responses can also include:
+0x3E : Enabled status
+0x5E : Inhibited status
+
+RECOMMENDED DRIVER BEHAVIOR
+===========================
+
+STATE VARIABLES
+---------------
+- connected: bool
+- enabled: bool
+- expect_bill_type: bool
+- pending_value_cad: int | null   (only set after you see bill type)
+- last_error: byte | null
+
+STARTUP SEQUENCE (robust)
 -------------------------
-In the protocol, 0x40/0x41 are “Bill Type 1/2”, not currency values by definition.
+1) Open COM port with 9600 8E1, no flow control.
+2) Send 0x3E (ENABLE).
+3) Begin a poll loop: send 0x0C every 250–500 ms until you see any valid reply
+   (0x3E / 0x5E / 0x20..0x2A / etc.). If you see valid replies, mark connected=true.
 
-Because you tested your unit and it accepts only CAD $5 and CAD $10:
-- 0x40 -> CAD $5
-- 0x41 -> CAD $10
+POWER-UP HANDSHAKE (if observed)
+--------------------------------
+If you ever receive 0x80:
+- Immediately send 0x02 (ACK).
+- Then send 0x3E (ENABLE).
+- Expect (often) 0x8F afterwards.
 
-If you ever change the currency dataset/firmware or bill acceptance settings, re-verify by logging
-the raw bill-type bytes for each denomination.
+BILL HANDLING (credit only after STACK CONFIRM)
+-----------------------------------------------
+1) RX 0x81  => set expect_bill_type = true
+2) Next RX byte should be bill type (0x40..0x44):
+   - If RX == 0x40: pending_value_cad = 5
+   - If RX == 0x41: pending_value_cad = 10
+   - Otherwise: pending_value_cad = null (unknown/disabled)
+3) Decide:
+   - If pending_value_cad is 5 or 10: TX 0x02 (ACCEPT/STACK)
+   - Else: TX 0x0F (REJECT)
+4) Wait for result:
+   - If RX == 0x10 (stack complete) and pending_value_cad != null:
+       CREDIT the amount (add to balance), then pending_value_cad = null
+   - If RX == 0x11 (reject complete):
+       pending_value_cad = null
 
-6) Errors and fault handling (log + operator messages)
-------------------------------------------------------
-Common status/error bytes (often seen as poll responses to 0x0C, or occasionally emitted around faults):
+IMPORTANT: Do NOT credit on 0x40/0x41 alone. Credit ONLY when you see 0x10.
 
-- 0x20 : Motor failure
-- 0x21 : Checksum error
-- 0x22 : Bill jam
-- 0x23 : Bill removed
-- 0x24 : Stacker open
-- 0x25 : Sensor problem
-- 0x27 : Bill fish
-- 0x28 : Stacker problem
-- 0x29 : Bill reject
-- 0x2A : Invalid command
+ENABLE/DISABLE (kiosk control)
+------------------------------
+- When your UI is not ready to take money, TX 0x5E (DISABLE).
+- When ready, TX 0x3E (ENABLE).
+- Optionally confirm using status poll (0x0C).
 
-Recommended app behavior:
-- Always log raw bytes with timestamps.
-- On any fault:
-  - Consider sending 0x5E (disable intake)
-  - Show a clear operator message (jam/stacker open/etc.)
-  - Keep polling until the fault clears; then re-enable with 0x3E.
+ERROR HANDLING
+--------------
+- If you receive any 0x20..0x2A:
+  - Log it with a timestamp.
+  - Optionally TX 0x5E (DISABLE) to stop intake.
+  - Show an operator message (jam/stacker open/etc.).
+  - Keep polling 0x0C until status clears, then TX 0x3E (ENABLE).
 
-7) DIP switches (what to remember)
-----------------------------------
-- Confirmed device is set to RS232 protocol mode (so your software should use the byte protocol in section 4).
-- DIP meanings can vary by currency dataset and by output mode (Pulse vs RS232).
-- Multiple DIP banks may exist (side vs bottom).
-- Your behavior suggests only the first two bill types are enabled/accepted (fits $5/$10-only operation).
-- Power-cycle after DIP changes.
+RESET
+-----
+- TX 0x30 to reset.
+- After reset, you may see 0x80 again. Handle handshake and re-enable.
 
-8) Minimal state machine (recommended)
---------------------------------------
-Startup:
-- Open COM (9600 8E1)
-- Send 0x3E (enable)
-- Optionally poll 0x0C every 250–500 ms until you see sane responses
+MINIMAL PSEUDOCODE (LLM-READY)
+==============================
+on_start():
+  open_serial(9600, 8E1)
+  send(0x3E)         // enable
+  start_poll_timer()
 
-RX loop:
-- If RX == 0x80:
-    TX 0x02 (ACK), then TX 0x3E (enable)
-- If RX == 0x81:
-    set expect_bill_type = true
-- If expect_bill_type and RX in {0x40, 0x41}:
-    pending_value = 5 or 10
-    TX 0x02 (accept)  [or TX 0x0F (reject) if needed]
-- If RX == 0x10 and pending_value != None:
-    CREDIT pending_value
-    pending_value = None
-- If RX == 0x11:
-    pending_value = None
-- If RX in {0x20..0x2A}:
-    log fault, show message, consider TX 0x5E, keep polling
+on_poll_timer():
+  send(0x0C)
 
-Shutdown:
-- TX 0x5E (disable) and close COM cleanly
+on_byte_received(b):
+  log_rx(b)
 
-9) Software / tools (service side)
-----------------------------------
-Two different “software” topics exist:
+  if b == 0x80:
+    send(0x02)       // power-up ACK
+    send(0x3E)       // enable
+    connected = true
+    return
 
-A) Calibration utility (service/calibration; not required for normal RS232 reading)
-- Some vendors provide a “TP70 Calibration” utility + short calibration guide.
+  if b == 0x8F:
+    connected = true
+    return
 
-B) Firmware/currency dataset download (reprogramming)
-- For changing currency datasets/firmware, you typically need a programmer workflow (e.g., G-BOX/GBOX II)
-  and vendor-provided manuals/files. This is usually obtained from the supplier/manufacturer/support, not
-  always publicly downloadable.
+  if b == 0x81:
+    expect_bill_type = true
+    pending_value_cad = null
+    return
+
+  if expect_bill_type:
+    expect_bill_type = false
+    if b == 0x40: pending_value_cad = 5
+    elif b == 0x41: pending_value_cad = 10
+    else: pending_value_cad = null
+
+    if pending_value_cad != null:
+      send(0x02)     // accept/stack
+    else:
+      send(0x0F)     // reject
+    return
+
+  if b == 0x10:      // stack complete
+    if pending_value_cad != null:
+      credit(pending_value_cad)
+      pending_value_cad = null
+    return
+
+  if b == 0x11:      // reject complete
+    pending_value_cad = null
+    return
+
+  if 0x20 <= b <= 0x2A:
+    last_error = b
+    send(0x5E)       // optional: disable intake
+    notify_operator(error_message(b))
+    return
+
+NOTES ABOUT DIP SWITCHES
+========================
+- Your unit is confirmed in RS232 protocol mode (not Pulse).
+- DIP switch meaning varies by currency dataset and by mode; power-cycle after DIP changes.
+- Your current config accepts only the first two bill types (fits $5/$10-only operation).
+
+TROUBLESHOOTING QUICK CHECKLIST
+===============================
+- Wrong serial settings => garbage/no data. Ensure 9600 8E1.
+- No bytes received => wrong COM port, wiring, or device not in RS232 mode.
+- Bills insert but always reject => host not responding (must send 0x02 quickly) or disabled (0x5E).
+- Crediting too early => only credit after 0x10.
 
 END

@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "av4h5fSeR7o=",
+  "dgSpecHash": "WZNqMta2MfA=",
   "success": true,
   "projectFilePath": "C:\\Users\\posad\\Projects\\kawaiiStudio\\src\\KawaiiStudio.App\\KawaiiStudio.App.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\posad\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.22\\microsoft.net.illink.tasks.8.0.22.nupkg.sha512",
     "C:\\Users\\posad\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0\\microsoft.win32.systemevents.6.0.0.nupkg.sha512",
     "C:\\Users\\posad\\.nuget\\packages\\qrcoder\\1.4.3\\qrcoder.1.4.3.nupkg.sha512",
     "C:\\Users\\posad\\.nuget\\packages\\runtime.linux-arm.runtime.native.system.io.ports\\8.0.0\\runtime.linux-arm.runtime.native.system.io.ports.8.0.0.nupkg.sha512",

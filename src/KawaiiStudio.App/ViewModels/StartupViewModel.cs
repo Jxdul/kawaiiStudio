@@ -300,7 +300,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             var allowedBills = _settings.CashDenominations;
             KawaiiStudio.App.App.Log("STARTUP_CASH_CHECK test_mode=true");
 
-            var realProvider = new Rs232CashAcceptorProvider(_settings.CashCom, allowedBills);
+            var realProvider = new Rs232CashAcceptorProvider(_settings.CashCom, allowedBills, _settings.CashLogAll);
             var realAttempt = await TryCashProviderAsync(realProvider, token);
             if (token.IsCancellationRequested)
             {
@@ -387,7 +387,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         var allowedBills = _settings.CashDenominations;
         return testMode
             ? new SimulatedCashAcceptorProvider(allowedBills)
-            : new Rs232CashAcceptorProvider(_settings.CashCom, allowedBills);
+            : new Rs232CashAcceptorProvider(_settings.CashCom, allowedBills, _settings.CashLogAll);
     }
 
     private async Task<(bool ok, bool timedOut)> TryCashProviderAsync(
