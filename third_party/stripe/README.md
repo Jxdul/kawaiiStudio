@@ -21,5 +21,3 @@ Helpful links:
 
 - Stripe Terminal docs: https://stripe.com/docs/terminal
 - Terminal Quickstart: https://stripe.com/docs/terminal/quickstart
-
-If you'd like, I can add a small sample backend project in this folder or adapt the example snippets to a .NET Web API project style that matches your environment. Let me know which language you'd prefer for a full example (Node/.NET/Python).
