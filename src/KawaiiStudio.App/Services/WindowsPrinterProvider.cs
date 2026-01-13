@@ -18,7 +18,7 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
     private const double DefaultPageWidth = 4 * 96;  // 4 inches @ 96 DPI
     private const double DefaultPageHeight = 6 * 96; // 6 inches @ 96 DPI
     private const int TargetPrintResolution = 600;
-    private const double TwoBySixScaleInset = 0.98;
+    private const double TwoBySixScaleInset = 0.97;
     private readonly SettingsService _settings;
     private readonly string _configRoot;
 
@@ -93,9 +93,25 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         }
 
         var isTwoBySix = size == PrintSize.TwoBySix;
-        var rotationDegrees = isTwoBySix && pageWidth > pageHeight ? -90 : 0;
+        var shouldRotate = size switch
+        {
+            PrintSize.TwoBySix => pageWidth > pageHeight,
+            PrintSize.FourBySix => true,
+            _ => false
+        };
+        var rotationDegrees = shouldRotate ? -90 : 0;
         var printImage = rotationDegrees == 0 ? image : RotateBitmap(image, rotationDegrees);
-        var document = BuildDocument(printImage, sheetCount, pageWidth, pageHeight, fitToPage: isTwoBySix);
+        var (finalPageWidth, finalPageHeight) = rotationDegrees == 0
+            ? (pageWidth, pageHeight)
+            : (pageHeight, pageWidth);
+        var applyMargin = size == PrintSize.FourBySix;
+        var document = BuildDocument(
+            printImage,
+            sheetCount,
+            finalPageWidth,
+            finalPageHeight,
+            fitToPage: isTwoBySix,
+            applyMargin: applyMargin);
         var writer = PrintQueue.CreateXpsDocumentWriter(queue);
         writer.Write(document.DocumentPaginator, ticket);
 
@@ -250,7 +266,8 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         int sheetCount,
         double pageWidth,
         double pageHeight,
-        bool fitToPage)
+        bool fitToPage,
+        bool applyMargin)
     {
         var document = new FixedDocument
         {
@@ -265,7 +282,7 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
                 Height = pageHeight
             };
 
-            var scaleInset = fitToPage ? TwoBySixScaleInset : 1.0;
+            var scaleInset = fitToPage || applyMargin ? TwoBySixScaleInset : 1.0;
             var imageWidth = pageWidth * scaleInset;
             var imageHeight = pageHeight * scaleInset;
 

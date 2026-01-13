@@ -8,9 +8,11 @@ namespace KawaiiStudio.App.Services;
 public sealed class PrinterService
 {
     private readonly IPrinterProvider _provider;
+    private readonly SettingsService _settings;
 
     public PrinterService(SettingsService settings, AppPaths appPaths)
     {
+        _settings = settings;
         _provider = new WindowsPrinterProvider(settings, appPaths.ConfigRoot);
     }
 
@@ -35,21 +37,26 @@ public sealed class PrinterService
             return Task.FromResult((false, (string?)null, "print_quantity_missing"));
         }
 
-        var sheetCount = CalculateSheetCount(session.Size, quantity);
+        var sheetCount = CalculateSheetCount(session.Size, quantity, _settings.TestMode);
         if (sheetCount <= 0)
         {
             return Task.FromResult((false, (string?)null, "print_sheet_count_invalid"));
         }
 
-        KawaiiStudio.App.App.Log($"PRINT_START sheets={sheetCount} size={session.Size} qty={quantity}");
+        KawaiiStudio.App.App.Log($"PRINT_START sheets={sheetCount} size={session.Size} qty={quantity} test={_settings.TestMode}");
         return _provider.PrintAsync(imagePath, sheetCount, session.Size, cancellationToken);
     }
 
-    private static int CalculateSheetCount(PrintSize? size, int quantity)
+    private static int CalculateSheetCount(PrintSize? size, int quantity, bool testMode)
     {
         if (quantity <= 0)
         {
             return 0;
+        }
+
+        if (testMode)
+        {
+            return 1;
         }
 
         return size switch
@@ -60,4 +67,3 @@ public sealed class PrinterService
         };
     }
 }
-

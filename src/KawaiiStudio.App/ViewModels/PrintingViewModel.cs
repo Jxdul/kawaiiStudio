@@ -63,20 +63,27 @@ public sealed class PrintingViewModel : ScreenViewModelBase
         }
 
         _printStarted = true;
-        StatusText = "Sending to printer...";
-        var result = await _printer.PrintAsync(_session.Current, System.Threading.CancellationToken.None);
-        if (result.ok)
+        try
         {
-            _session.SetPrintJob(result.jobId ?? string.Empty, "sent");
-            StatusText = "Printing...";
-            KawaiiStudio.App.App.Log($"PRINT_SENT job={result.jobId ?? "unknown"}");
+            StatusText = "Sending to printer...";
+            var result = await _printer.PrintAsync(_session.Current, System.Threading.CancellationToken.None);
+            if (result.ok)
+            {
+                _session.SetPrintJob(result.jobId ?? string.Empty, "sent");
+                StatusText = "Printing...";
+                KawaiiStudio.App.App.Log($"PRINT_SENT job={result.jobId ?? "unknown"}");
+            }
+            else
+            {
+                _session.SetPrintJob(string.Empty, "error");
+                var reason = string.IsNullOrWhiteSpace(result.error) ? "print_failed" : result.error;
+                StatusText = "Print failed. Call staff.";
+                KawaiiStudio.App.App.Log($"PRINT_FAILED reason={reason}");
+            }
         }
-        else
+        finally
         {
-            _session.SetPrintJob(string.Empty, "error");
-            var reason = string.IsNullOrWhiteSpace(result.error) ? "print_failed" : result.error;
-            StatusText = "Print failed. Call staff.";
-            KawaiiStudio.App.App.Log($"PRINT_FAILED reason={reason}");
+            _printStarted = false;
         }
     }
 }
