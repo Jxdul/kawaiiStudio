@@ -74,7 +74,7 @@ public partial class App : Application
         var categoryViewModel = new CategoryViewModel(navigation, session, frameCatalog, themeCatalog);
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
         var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, cashAcceptor, cardPayment);
-        var captureViewModel = new CaptureViewModel(navigation, session, cameraService, settings, themeCatalog);
+        var captureViewModel = new CaptureViewModel(navigation, session, cameraService, settings, themeCatalog, templateCatalog);
         var processingViewModel = new ProcessingViewModel(navigation, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);
         var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, videoCompiler, uploadService, themeCatalog);

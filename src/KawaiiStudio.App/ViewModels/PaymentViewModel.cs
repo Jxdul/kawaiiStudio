@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Input;
+using System.Windows.Threading;
 using KawaiiStudio.App.Models;
 using KawaiiStudio.App.Services;
 
@@ -40,6 +41,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private readonly RelayCommand _simulateExpiredCardCommand;
     private readonly RelayCommand _simulateProcessingErrorCommand;
     private readonly RelayCommand _backCommand;
+    private readonly Dispatcher? _dispatcher;
     private string _summaryText = string.Empty;
     private string _cashStatusText = string.Empty;
     private string _totalPriceText = string.Empty;
@@ -65,6 +67,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _settings = settings;
         _cashAcceptor = cashAcceptor;
         _cardPayment = cardPayment;
+        _dispatcher = System.Windows.Application.Current?.Dispatcher;
 
         _insertFiveCommand = new RelayCommand(() => InsertBill(5), CanInsertBill);
         _insertTenCommand = new RelayCommand(() => InsertBill(10), CanInsertBill);
@@ -476,18 +479,24 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private void HandleCardApproved(object? sender, CardPaymentEventArgs e)
     {
-        IsCardPaymentInProgress = false;
-        CardStatusText = "Card approved.";
-        KawaiiStudio.App.App.Log($"CARD_PAYMENT_APPROVED amount={e.Amount:0.00}");
-        MarkPaid();
+        RunOnUiThread(() =>
+        {
+            IsCardPaymentInProgress = false;
+            CardStatusText = "Card approved.";
+            KawaiiStudio.App.App.Log($"CARD_PAYMENT_APPROVED amount={e.Amount:0.00}");
+            MarkPaid();
+        });
     }
 
     private void HandleCardDeclined(object? sender, CardPaymentEventArgs e)
     {
-        IsCardPaymentInProgress = false;
-        var reason = string.IsNullOrWhiteSpace(e.Message) ? "declined" : e.Message;
-        CardStatusText = "Card declined. Try again or use cash.";
-        KawaiiStudio.App.App.Log($"CARD_PAYMENT_DECLINED amount={e.Amount:0.00} reason={reason}");
+        RunOnUiThread(() =>
+        {
+            IsCardPaymentInProgress = false;
+            var reason = string.IsNullOrWhiteSpace(e.Message) ? "declined" : e.Message;
+            CardStatusText = "Card declined. Try again or use cash.";
+            KawaiiStudio.App.App.Log($"CARD_PAYMENT_DECLINED amount={e.Amount:0.00} reason={reason}");
+        });
     }
 
     private async System.Threading.Tasks.Task StartCardPaymentAsync(decimal amount)
@@ -547,31 +556,48 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private void HandleBillAccepted(object? sender, CashAcceptorEventArgs e)
     {
-        _lastCashRejectReason = null;
-        CashErrorText = string.Empty;
-        _session.Current.AddCash(e.Amount);
-        UpdateCashStatus();
-        KawaiiStudio.App.App.Log($"PAYMENT_BILL_ACCEPTED amount={e.Amount:0.00} total={_session.Current.CashInserted:0.00}");
-
-        var total = _session.Current.PriceTotal;
-        if (total <= 0m)
+        RunOnUiThread(() =>
         {
-            total = CalculateTotalPrice();
-        }
+            _lastCashRejectReason = null;
+            CashErrorText = string.Empty;
+            _session.Current.AddCash(e.Amount);
+            UpdateCashStatus();
+            KawaiiStudio.App.App.Log($"PAYMENT_BILL_ACCEPTED amount={e.Amount:0.00} total={_session.Current.CashInserted:0.00}");
 
-        if (total > 0m && _session.Current.CashInserted >= total)
-        {
-            MarkPaid();
-        }
+            var total = _session.Current.PriceTotal;
+            if (total <= 0m)
+            {
+                total = CalculateTotalPrice();
+            }
+
+            if (total > 0m && _session.Current.CashInserted >= total)
+            {
+                MarkPaid();
+            }
+        });
     }
 
     private void HandleBillRejected(object? sender, CashAcceptorEventArgs e)
     {
-        var reason = string.IsNullOrWhiteSpace(e.Reason) ? "unknown" : e.Reason;
-        KawaiiStudio.App.App.Log($"PAYMENT_BILL_REJECTED amount={e.Amount} reason={reason}");
-        _lastCashRejectReason = reason;
-        CashErrorText = MapCashError(reason);
-        UpdateCashStatus();
+        RunOnUiThread(() =>
+        {
+            var reason = string.IsNullOrWhiteSpace(e.Reason) ? "unknown" : e.Reason;
+            KawaiiStudio.App.App.Log($"PAYMENT_BILL_REJECTED amount={e.Amount} reason={reason}");
+            _lastCashRejectReason = reason;
+            CashErrorText = MapCashError(reason);
+            UpdateCashStatus();
+        });
+    }
+
+    private void RunOnUiThread(Action action)
+    {
+        if (_dispatcher is null || _dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        _dispatcher.BeginInvoke(action);
     }
 
     private void MarkPaid()

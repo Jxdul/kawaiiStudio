@@ -36,8 +36,11 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
     private readonly string _portName;
     private readonly HashSet<int> _allowedBills;
     private readonly bool _logAllBytes;
+    private readonly object _connectLock = new();
     private readonly object _writeLock = new();
     private readonly object _stateLock = new();
+    private Task<bool>? _connectTask;
+    private bool _connecting;
     private TaskCompletionSource<bool>? _connectTcs;
     private SerialPort? _port;
     private CancellationTokenSource? _readCts;
@@ -70,12 +73,36 @@ public sealed class Rs232CashAcceptorProvider : ICashAcceptorProvider
 
     public Task<bool> ConnectAsync(CancellationToken cancellationToken)
     {
-        if (IsConnected)
+        lock (_connectLock)
         {
-            return Task.FromResult(true);
-        }
+            if (IsConnected || IsPortOpen)
+            {
+                return Task.FromResult(true);
+            }
 
-        return Task.Run(() => ConnectInternal(cancellationToken), cancellationToken);
+            if (_connecting && _connectTask is not null)
+            {
+                return _connectTask;
+            }
+
+            _connecting = true;
+            _connectTask = Task.Run(() =>
+            {
+                try
+                {
+                    return ConnectInternal(cancellationToken);
+                }
+                finally
+                {
+                    lock (_connectLock)
+                    {
+                        _connecting = false;
+                    }
+                }
+            }, cancellationToken);
+
+            return _connectTask;
+        }
     }
 
     public Task DisconnectAsync(CancellationToken cancellationToken)

@@ -115,7 +115,18 @@ public sealed class SessionService
         }
 
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        File.AppendAllText(_logFilePath, $"{timestamp} {message}{Environment.NewLine}");
+        var line = $"{timestamp} {message}{Environment.NewLine}";
+
+        try
+        {
+            using var stream = new FileStream(_logFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+            using var writer = new StreamWriter(stream);
+            writer.Write(line);
+        }
+        catch
+        {
+            // Avoid crashing the app if the log file is temporarily locked.
+        }
     }
 
     private int GetNextSessionIndex()

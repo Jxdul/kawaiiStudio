@@ -96,9 +96,10 @@ BILL HANDLING (credit only after STACK CONFIRM)
 2) Next RX byte should be bill type (0x40..0x44):
    - If RX == 0x40: pending_value_cad = 5
    - If RX == 0x41: pending_value_cad = 10
+   - If RX == 0x42: pending_value_cad = 20
    - Otherwise: pending_value_cad = null (unknown/disabled)
 3) Decide:
-   - If pending_value_cad is 5 or 10: TX 0x02 (ACCEPT/STACK)
+   - If pending_value_cad is 5 or 10 or 20: TX 0x02 (ACCEPT/STACK)
    - Else: TX 0x0F (REJECT)
 4) Wait for result:
    - If RX == 0x10 (stack complete) and pending_value_cad != null:

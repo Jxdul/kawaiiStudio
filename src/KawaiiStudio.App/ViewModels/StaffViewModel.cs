@@ -39,7 +39,7 @@ public sealed class StaffViewModel : ScreenViewModelBase
         _printTickets = printTickets;
 
         SaveCommand = new RelayCommand(Save);
-        ReloadCommand = new RelayCommand(LoadFromSettings);
+        ReloadCommand = new RelayCommand(ReloadApp);
         CloseAppCommand = new RelayCommand(CloseApp);
         SelectEntryCommand = new RelayCommand<StaffSettingEntry>(SelectEntry);
         _confirmEntryCommand = new RelayCommand(ConfirmEntry, () => SelectedEntry is not null);
@@ -243,6 +243,13 @@ public sealed class StaffViewModel : ScreenViewModelBase
         SelectedEntry = null;
         PendingEntryValue = string.Empty;
         PrintTicketStatus = string.Empty;
+    }
+
+    private void ReloadApp()
+    {
+        LoadFromSettings();
+        App.Log("STAFF_RELOAD");
+        _navigation.Navigate("startup");
     }
 
     private void Save()

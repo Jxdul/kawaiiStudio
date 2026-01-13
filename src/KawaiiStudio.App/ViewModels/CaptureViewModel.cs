@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -21,6 +22,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
     private readonly SessionService _session;
     private readonly ICameraProvider _camera;
     private readonly SettingsService _settings;
+    private readonly TemplateCatalogService _templates;
     private readonly RelayCommand _continueCommand;
     private DispatcherTimer? _liveViewTimer;
     private CancellationTokenSource? _liveViewCts;
@@ -42,13 +44,15 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         SessionService session,
         ICameraProvider camera,
         SettingsService settings,
-        ThemeCatalogService themeCatalog)
+        ThemeCatalogService themeCatalog,
+        TemplateCatalogService templates)
         : base(themeCatalog, "capture")
     {
         _navigation = navigation;
         _session = session;
         _camera = camera;
         _settings = settings;
+        _templates = templates;
         _continueCommand = new RelayCommand(StartCapture, () => !_isCapturing);
         ContinueCommand = _continueCommand;
         BackCommand = new RelayCommand(NavigateBack);
@@ -169,8 +173,9 @@ public sealed class CaptureViewModel : ScreenViewModelBase
             var frame = await _camera.GetLiveViewFrameAsync(token);
             if (frame is not null)
             {
-                LiveViewImage = frame;
-                QueuePreviewFrameSave(frame);
+                var displayFrame = ApplyLiveViewCrop(frame) ?? frame;
+                LiveViewImage = displayFrame;
+                QueuePreviewFrameSave(displayFrame);
             }
         }
         catch
@@ -408,6 +413,78 @@ public sealed class CaptureViewModel : ScreenViewModelBase
 
         _ = Task.Run(() => SavePreviewFrame(frozenFrame, folder, index))
             .ContinueWith(_ => Interlocked.Exchange(ref _previewSaveInProgress, 0), TaskScheduler.Default);
+    }
+
+    private BitmapSource? ApplyLiveViewCrop(BitmapSource source)
+    {
+        var templateType = _session.Current.TemplateType;
+        if (string.IsNullOrWhiteSpace(templateType))
+        {
+            return null;
+        }
+
+        if (!templateType.StartsWith("4x6_4slots", StringComparison.OrdinalIgnoreCase)
+            && !templateType.StartsWith("4x6_6slots", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var template = _templates.GetTemplate(templateType);
+        if (template is null || template.Slots.Count == 0)
+        {
+            return null;
+        }
+
+        var slot = template.Slots[0];
+        if (slot.Width <= 0 || slot.Height <= 0)
+        {
+            return null;
+        }
+
+        var targetAspect = slot.Width / (double)slot.Height;
+        var sourceWidth = source.PixelWidth;
+        var sourceHeight = source.PixelHeight;
+        if (sourceWidth <= 0 || sourceHeight <= 0)
+        {
+            return null;
+        }
+
+        var sourceAspect = sourceWidth / (double)sourceHeight;
+        var cropWidth = sourceWidth;
+        var cropHeight = sourceHeight;
+
+        if (sourceAspect > targetAspect)
+        {
+            cropWidth = (int)Math.Round(sourceHeight * targetAspect);
+            cropHeight = sourceHeight;
+        }
+        else if (sourceAspect < targetAspect)
+        {
+            cropWidth = sourceWidth;
+            cropHeight = (int)Math.Round(sourceWidth / targetAspect);
+        }
+
+        cropWidth = Math.Min(cropWidth, sourceWidth);
+        cropHeight = Math.Min(cropHeight, sourceHeight);
+        if (cropWidth <= 0 || cropHeight <= 0)
+        {
+            return null;
+        }
+
+        var offsetX = Math.Max(0, (sourceWidth - cropWidth) / 2);
+        var offsetY = Math.Max(0, (sourceHeight - cropHeight) / 2);
+        var rect = new Int32Rect(offsetX, offsetY, cropWidth, cropHeight);
+
+        try
+        {
+            var cropped = new CroppedBitmap(source, rect);
+            cropped.Freeze();
+            return cropped;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static void SavePreviewFrame(BitmapSource frame, string folder, int index)
