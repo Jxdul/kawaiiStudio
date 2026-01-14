@@ -76,11 +76,11 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         }
 
         var ticket = queue.DefaultPrintTicket ?? new PrintTicket();
-        ticket.PageOrientation ??= PageOrientation.Landscape;
+        ticket.PageOrientation = PageOrientation.Landscape;
         ticket.PageMediaSize ??= new PageMediaSize(PageMediaSizeName.NorthAmerica4x6);
         ticket = ApplyTicketOverrides(queue, ticket, size);
         ticket = ApplyQualityOverrides(queue, ticket);
-        EnsureLandscapeTicket(ticket);
+        ticket = NormalizeTicketToLandscape(ticket);
 
         var pageWidth = ticket.PageMediaSize.Width ?? DefaultPageWidth;  // Landscape: width = 6 inches
         var pageHeight = ticket.PageMediaSize.Height ?? DefaultPageHeight; // Landscape: height = 4 inches
@@ -201,23 +201,20 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         return Path.Combine(_configRoot, rawPath);
     }
 
-    private static void EnsureLandscapeTicket(PrintTicket ticket)
+    private static PrintTicket NormalizeTicketToLandscape(PrintTicket ticket)
     {
         ticket.PageOrientation = PageOrientation.Landscape;
 
-        var mediaSize = ticket.PageMediaSize;
-        if (mediaSize is null)
-        {
-            ticket.PageMediaSize = new PageMediaSize(PageMediaSizeName.NorthAmerica4x6);
-            return;
-        }
-
+        var mediaSize = ticket.PageMediaSize ?? new PageMediaSize(PageMediaSizeName.NorthAmerica4x6);
         var width = mediaSize.Width ?? DefaultPageWidth;
         var height = mediaSize.Height ?? DefaultPageHeight;
         if (width < height)
         {
-            ticket.PageMediaSize = new PageMediaSize(height, width);
+            mediaSize = new PageMediaSize(height, width);
         }
+
+        ticket.PageMediaSize = mediaSize;
+        return ticket;
     }
 
     private static FixedDocument BuildDocument(
