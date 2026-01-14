@@ -23,6 +23,8 @@ public sealed class SettingsService
 
     public int MaxQuantity => GetInt("MAX_QUANTITY", 10);
     public string PrintName => GetString("PrintName", "DS-RX1");
+    public string PrinterName2x6 => GetString("PRINTER_NAME_2X6", "DS-RX1-2x6");
+    public string PrinterName4x6 => GetString("PRINTER_NAME_4X6", "DS-RX1-4x6");
     public string CashCom => GetString("cash_COM", "COM4");
     public int DefaultTimeout => GetInt("TIMEOUT_DEFAULT", DefaultTimeoutSeconds);
     public int CameraTimerSeconds => GetInt("CAMERA_TIMER_SECONDS", 3);
@@ -271,6 +273,8 @@ public sealed class SettingsService
         _values["CASH_DENOMS"] = "5,10,20";
         _values["CASH_LOG_ALL"] = "false";
         _values["PrintName"] = "DS-RX1";
+        _values["PRINTER_NAME_2X6"] = "DS-RX1-2x6";
+        _values["PRINTER_NAME_4X6"] = "DS-RX1-4x6";
         _values["cash_COM"] = "COM4";
         _values["CARD_PROVIDER"] = "simulated";
         _values["STRIPE_TERMINAL_BASE_URL"] = "https://kawaii-studio-server.jxdul.workers.dev";
@@ -324,6 +328,8 @@ public sealed class SettingsService
             ["CASH_DENOMS"] = "5,10,20",
             ["CASH_LOG_ALL"] = "false",
             ["PrintName"] = "DS-RX1",
+            ["PRINTER_NAME_2X6"] = "DS-RX1-2x6",
+            ["PRINTER_NAME_4X6"] = "DS-RX1-4x6",
             ["cash_COM"] = "COM4",
             ["CARD_PROVIDER"] = "simulated",
             ["STRIPE_TERMINAL_BASE_URL"] = "https://kawaii-studio-server.jxdul.workers.dev",
@@ -388,6 +394,8 @@ public sealed class SettingsService
             new[]
             {
                 "PrintName",
+                "PRINTER_NAME_2X6",
+                "PRINTER_NAME_4X6",
                 "cash_COM",
                 "CARD_PROVIDER",
                 "STRIPE_TERMINAL_BASE_URL",

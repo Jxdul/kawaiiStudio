@@ -14,6 +14,8 @@ public sealed class StaffViewModel : ScreenViewModelBase
     private readonly RelayCommand _cancelEntryCommand;
     private string _maxQuantity = string.Empty;
     private string _printName = string.Empty;
+    private string _printerName2x6 = string.Empty;
+    private string _printerName4x6 = string.Empty;
     private string _cashCom = string.Empty;
     private string _cashDenominations = string.Empty;
     private string _cardProvider = string.Empty;
@@ -79,6 +81,26 @@ public sealed class StaffViewModel : ScreenViewModelBase
         set
         {
             _printName = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string PrinterName2x6
+    {
+        get => _printerName2x6;
+        set
+        {
+            _printerName2x6 = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string PrinterName4x6
+    {
+        get => _printerName4x6;
+        set
+        {
+            _printerName4x6 = value;
             OnPropertyChanged();
         }
     }
@@ -206,6 +228,8 @@ public sealed class StaffViewModel : ScreenViewModelBase
         MaxQuantity = _settings.GetValue("MAX_QUANTITY", "10");
         CashDenominations = _settings.GetValue("CASH_DENOMS", "5,10,20");
         PrintName = _settings.GetValue("PrintName", "DS-RX1");
+        PrinterName2x6 = _settings.GetValue("PRINTER_NAME_2X6", "DS-RX1-2x6");
+        PrinterName4x6 = _settings.GetValue("PRINTER_NAME_4X6", "DS-RX1-4x6");
         CashCom = _settings.GetValue("cash_COM", "COM4");
         CardProvider = _settings.GetValue("CARD_PROVIDER", "simulated");
         StripeTerminalBaseUrl = _settings.GetValue("STRIPE_TERMINAL_BASE_URL", "http://localhost:4242");
@@ -238,6 +262,8 @@ public sealed class StaffViewModel : ScreenViewModelBase
         _settings.SetValue("MAX_QUANTITY", MaxQuantity);
         _settings.SetValue("CASH_DENOMS", CashDenominations);
         _settings.SetValue("PrintName", PrintName);
+        _settings.SetValue("PRINTER_NAME_2X6", PrinterName2x6);
+        _settings.SetValue("PRINTER_NAME_4X6", PrinterName4x6);
         _settings.SetValue("cash_COM", CashCom);
         _settings.SetValue("CARD_PROVIDER", CardProvider);
         _settings.SetValue("STRIPE_TERMINAL_BASE_URL", StripeTerminalBaseUrl);

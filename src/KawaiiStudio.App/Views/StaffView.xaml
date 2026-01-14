@@ -102,6 +102,14 @@
                 <TextBox Text="{Binding PrintName, UpdateSourceTrigger=PropertyChanged}" Width="160" />
               </StackPanel>
               <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="2x6 queue" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
+                <TextBox Text="{Binding PrinterName2x6, UpdateSourceTrigger=PropertyChanged}" Width="160" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="4x6 queue" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
+                <TextBox Text="{Binding PrinterName4x6, UpdateSourceTrigger=PropertyChanged}" Width="160" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                 <TextBlock Text="Cash COM" FontSize="12" Foreground="#B8B8B8" Width="120" VerticalAlignment="Center" />
                 <TextBox Text="{Binding CashCom, UpdateSourceTrigger=PropertyChanged}" Width="120" />
               </StackPanel>
