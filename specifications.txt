@@ -21,7 +21,7 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 * Simple “tap-to-start” experience.
 * Clear options for **2×6** and **4×6**.
 * Easy photo selection from **8 captured shots**.
-* Printed photo includes **QR** to retrieve **digital image + recorded video**.
+* Printed photo includes **QR** to retrieve **digital image + compiled video** (stitched from preview frames).
 * Fast printing + friendly completion screen.
 
 ### 2.2 Staff goals
@@ -44,10 +44,10 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 * Cash payment via **serial bill acceptor** (RS232 protocol).
 * Card payment: Stripe Terminal integration (worker-backed) with simulator flows in test mode.
 * Canon camera integration via **Canon SDK/API**.
-* Continuous video recording during session capture.
+* Preview frame capture from live view during session capture, compiled into video via ffmpeg.
 * Composite image generation + QR overlay.
 * Print pipeline to **DNP RX1HS**.
-* Upload/hosting pipeline for image/video + QR destination (implementation details may vary, but interfaces must exist).
+* Upload/hosting pipeline for image/video + QR destination (video compiled from preview frames via ffmpeg).
 * Logging + audit trail.
 
 ### Out of scope (for v0.1)
@@ -257,13 +257,11 @@ Rules:
 
   * pre-countdown length
   * interval between shots
-* **Video recording**:
-
-  * starts at beginning of capture
-  * ends after last shot (or after review starts; configurable)
 * **Preview frames**:
 
-  * save low-frame-rate live view images to `preview_frames/` during capture
+  * save low-frame-rate snapshots of live view images to `preview_frames/` during capture
+  * frames are captured at regular intervals (e.g., every 200ms) during the capture sequence
+  * these frames are later compiled into a video using ffmpeg
 * Must handle camera disconnect:
 
   * show “Call Staff”
@@ -310,13 +308,13 @@ Actions:
   * apply frame overlay PNG
   * apply QR overlay (template or per-frame override)
   * render print-ready at correct resolution
-* Render final session video (e.g., via ffmpeg) and save to `videos/`
+* Compile final session video from preview frames (via ffmpeg) and save to `videos/`
 * Generate QR code (top-right placement; see §9)
 
   * QR links to a landing page containing:
 
     * digital image download
-    * video download/playback
+    * compiled video download/playback (stitched from preview frames)
     * optional review link
 * Save outputs to session folder and enqueue print.
 * Print output is always 4x6 (1200x1800); 2x6 is duplicated side-by-side.
@@ -504,7 +502,7 @@ Configurable method(s), e.g.:
    * Connection test
    * Live view test
    * Capture test shot
-   * Video record test
+   * Preview frame compilation test
    * Storage path + free space display
 
 6. **Frames & Assets**
@@ -569,7 +567,7 @@ Configurable method(s), e.g.:
 * Cash acceptor: inserted/accepted/rejected/jammed + amounts
 * Payment: completed/failed/canceled
 * Capture: shot # timestamps, camera errors
-* Video: start/stop, output file, errors
+* Video compilation: preview frame count, output file, errors
 * Upload: success/failure, generated URL/token
 * Printing: queued/sent/success/failure
 * Staff actions: config changes + who/when (PIN identity if used)
@@ -664,7 +662,7 @@ To keep card payments and devices swappable, implement providers:
 
 * `ICameraProvider`
 
-  * `Connect()`, `StartLiveView()`, `CapturePhoto()`, `StartVideo()`, `StopVideo()`
+  * `Connect()`, `StartLiveView()`, `CapturePhoto()`, `GetLiveViewFrame()`
 * `IPaymentProvider`
 
   * `StartPayment(amount)`, `Cancel()`, events: `OnProgress`, `OnSuccess`, `OnFailure`
@@ -673,7 +671,7 @@ To keep card payments and devices swappable, implement providers:
   * `Print(file, quantity)`, `GetStatus()`, events: `OnJobUpdate`
 * `IUploadProvider`
 
-  * `UploadImage()`, `UploadVideo()`, returns `qrUrl/token`
+  * `UploadImage()`, `UploadVideo()` (video compiled from preview frames), returns `qrUrl/token`
 
 Current implementation uses `ICardPaymentProvider` and `ICashAcceptorProvider` for payment devices, with Stripe Terminal backed by a worker service.
 
@@ -695,13 +693,13 @@ Current implementation uses `ICardPaymentProvider` and `ICashAcceptorProvider` f
 * [ ] Payment gating works: capture only starts after payment success
 * [x] Stripe Terminal test flow works via worker + simulator buttons
 * [ ] Canon capture reliably produces 8 images
-* [ ] Video recorded during capture and tied to session
+* [ ] Video compiled from preview frames and tied to session
 * [ ] DNP print job submitted and tracked
 
 ### Output
 
 * [ ] Final image includes QR top-right
-* [ ] QR resolves to page with image + video
+* [ ] QR resolves to page with image + compiled video
 * [ ] Reprint last includes preview
 * [ ] Per-frame layout overrides apply when present
 

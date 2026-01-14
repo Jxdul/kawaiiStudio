@@ -18,6 +18,7 @@ Kiosk-style photobooth app for Windows with a simple customer flow and a frame-d
 - Cash acceptor RS232 provider (handshake + cash totals)
 - Stripe Terminal card flow (worker-backed) with simulator buttons (available in all modes)
 - Inactivity handling: home/capture suppressed; post-payment screens auto-advance; review timeout auto-fills
+- Video compilation: preview frames captured from live view during capture, compiled into MP4 via ffmpeg
 
 ## Customer flow
 
@@ -79,7 +80,7 @@ prints/
 videos/
 ```
 
-Each `session_x` folder stores captured photos in `photos/`, low-frame-rate live view frames in `preview_frames/`, and the final compiled video in `videos/`.
+Each `session_x` folder stores captured photos in `photos/`, low-frame-rate snapshots of live view in `preview_frames/` (captured during the session), and the final compiled video in `videos/` (stitched from preview frames using ffmpeg).
 
 ## Settings
 
@@ -141,7 +142,7 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 ## Remaining work (from `specifications.txt`)
 
 - Finish payment flow: richer cash events (inserted/jam), disable intake after paid, and harden card provider errors.
-- Capture needs video recording, robust disconnect handling, and per-screen timer tuning.
+- Capture needs robust disconnect handling and per-screen timer tuning (video compilation from preview frames is implemented).
 - Upload hooks, QR destination hosting, and print queue integration are not implemented.
 - Config parsing for `config/app.json` and `config/pricing.json` is not implemented.
 - Provider interfaces for printer/upload are not defined yet.
