@@ -71,12 +71,16 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
             return (false, null, "print_queue_missing");
         }
 
-        var ticket = queue.DefaultPrintTicket ?? new PrintTicket();
-        ticket.PageOrientation = PageOrientation.Landscape;
-        ticket.PageMediaSize ??= new PageMediaSize(PageMediaSizeName.NorthAmerica4x6);
+        // Use the queue's default print ticket without modifications
+        var ticket = queue.DefaultPrintTicket;
+        if (ticket is null)
+        {
+            return (false, null, "print_ticket_missing");
+        }
 
-        var pageWidth = ticket.PageMediaSize.Width ?? DefaultPageWidth;
-        var pageHeight = ticket.PageMediaSize.Height ?? DefaultPageHeight;
+        // Extract page dimensions from the ticket for document building
+        var pageWidth = ticket.PageMediaSize?.Width ?? DefaultPageWidth;
+        var pageHeight = ticket.PageMediaSize?.Height ?? DefaultPageHeight;
 
         var document = BuildDocument(image, copyCount, pageWidth, pageHeight);
         var writer = PrintQueue.CreateXpsDocumentWriter(queue);
@@ -89,9 +93,22 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
 
     private PrintQueue? ResolveQueue(PrintSize size)
     {
-        var printerName = size == PrintSize.TwoBySix
-            ? _settings.PrinterName2x6
-            : _settings.PrinterName4x6;
+        string printerName;
+        if (size == PrintSize.TwoBySix)
+        {
+            printerName = _settings.PrinterName2x6;
+            KawaiiStudio.App.App.Log($"PRINT_QUEUE_RESOLVE size=2x6 queue={printerName}");
+        }
+        else if (size == PrintSize.FourBySix)
+        {
+            printerName = _settings.PrinterName4x6;
+            KawaiiStudio.App.App.Log($"PRINT_QUEUE_RESOLVE size=4x6 queue={printerName}");
+        }
+        else
+        {
+            KawaiiStudio.App.App.Log($"PRINT_QUEUE_UNKNOWN size={size}");
+            return null;
+        }
 
         if (string.IsNullOrWhiteSpace(printerName))
         {
@@ -103,6 +120,7 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         {
             var queue = new PrintQueue(new PrintServer(), printerName);
             queue.Refresh();
+            KawaiiStudio.App.App.Log($"PRINT_QUEUE_FOUND size={size} queue={queue.Name}");
             return queue;
         }
         catch (Exception ex)
