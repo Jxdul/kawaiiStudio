@@ -1193,7 +1193,6 @@ C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windo
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\logs\20260112\session_4\preview_frames\preview_0024.png
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\logs\20260112\session_4\session_4_final.png
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\logs\20260112\session_4\videos\session_4_video.mp4
-C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\printtickets\2x6-cut.xml
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\templates.json
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\themes\default\backgrounds\capture\placeholder
 C:\Users\posad\Projects\kawaiiStudio\src\KawaiiStudio.App\bin\Debug\net8.0-windows\Config\themes\default\backgrounds\category\placeholder
