@@ -15,8 +15,8 @@ namespace KawaiiStudio.App.Services;
 
 public sealed class WindowsPrinterProvider : IPrinterProvider
 {
-    private const double DefaultPageWidth = 4 * 96;  // 4 inches @ 96 DPI
-    private const double DefaultPageHeight = 6 * 96; // 6 inches @ 96 DPI
+    private const double DefaultPageWidth = 6 * 96;  // 6 inches @ 96 DPI
+    private const double DefaultPageHeight = 4 * 96; // 4 inches @ 96 DPI
     private const int TargetPrintResolution = 600;
     private const double TwoBySixScaleInset = 0.97;
     private readonly SettingsService _settings;
@@ -76,34 +76,18 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         }
 
         var ticket = queue.DefaultPrintTicket ?? new PrintTicket();
-        ticket.PageOrientation ??= PageOrientation.Portrait;
+        ticket.PageOrientation ??= PageOrientation.Landscape;
         ticket.PageMediaSize ??= new PageMediaSize(PageMediaSizeName.NorthAmerica4x6);
         ticket = ApplyTicketOverrides(queue, ticket, size);
         ticket = ApplyQualityOverrides(queue, ticket);
-        if (size != PrintSize.TwoBySix)
-        {
-            ticket = NormalizeTicketForOrientation(queue, ticket);
-        }
+        EnsureLandscapeTicket(ticket);
 
-        var pageWidth = ticket.PageMediaSize.Width ?? DefaultPageWidth;
-        var pageHeight = ticket.PageMediaSize.Height ?? DefaultPageHeight;
-        if (size != PrintSize.TwoBySix)
-        {
-            (pageWidth, pageHeight) = NormalizePageSizeForOrientation(ticket.PageOrientation, pageWidth, pageHeight);
-        }
+        var pageWidth = ticket.PageMediaSize.Width ?? DefaultPageWidth;  // Landscape: width = 6 inches
+        var pageHeight = ticket.PageMediaSize.Height ?? DefaultPageHeight; // Landscape: height = 4 inches
 
         var isTwoBySix = size == PrintSize.TwoBySix;
-        var shouldRotate = size switch
-        {
-            PrintSize.TwoBySix => pageWidth > pageHeight,
-            PrintSize.FourBySix => true,
-            _ => false
-        };
-        var rotationDegrees = shouldRotate ? -90 : 0;
-        var printImage = rotationDegrees == 0 ? image : RotateBitmap(image, rotationDegrees);
-        var (finalPageWidth, finalPageHeight) = rotationDegrees == 0
-            ? (pageWidth, pageHeight)
-            : (pageHeight, pageWidth);
+        var printImage = image;
+        var (finalPageWidth, finalPageHeight) = (pageWidth, pageHeight);
         var applyMargin = size == PrintSize.FourBySix;
         var document = BuildDocument(
             printImage,
@@ -202,50 +186,6 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         return baseTicket;
     }
 
-    private PrintTicket NormalizeTicketForOrientation(PrintQueue queue, PrintTicket baseTicket)
-    {
-        var orientation = baseTicket.PageOrientation ?? PageOrientation.Portrait;
-        var mediaSize = baseTicket.PageMediaSize;
-        if (mediaSize?.Width is null || mediaSize.Height is null)
-        {
-            return baseTicket;
-        }
-
-        var width = mediaSize.Width.Value;
-        var height = mediaSize.Height.Value;
-        var isPortrait = orientation is PageOrientation.Portrait or PageOrientation.ReversePortrait;
-        var isLandscape = orientation is PageOrientation.Landscape or PageOrientation.ReverseLandscape;
-
-        var needsSwap = (isPortrait && width > height) || (isLandscape && height > width);
-        if (!needsSwap)
-        {
-            return baseTicket;
-        }
-
-        var overrideTicket = new PrintTicket
-        {
-            PageOrientation = orientation,
-            PageMediaSize = new PageMediaSize(height, width)
-        };
-
-        try
-        {
-            var result = queue.MergeAndValidatePrintTicket(baseTicket, overrideTicket);
-            if (result.ValidatedPrintTicket is not null)
-            {
-                KawaiiStudio.App.App.Log("PRINT_TICKET_ORIENTATION_NORMALIZED");
-                return result.ValidatedPrintTicket;
-            }
-        }
-        catch (Exception ex)
-        {
-            var reason = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
-            KawaiiStudio.App.App.Log($"PRINT_TICKET_ORIENTATION_FAILED reason={reason}");
-        }
-
-        return baseTicket;
-    }
-
     private string? ResolveTicketPath(string rawPath)
     {
         if (string.IsNullOrWhiteSpace(rawPath))
@@ -259,6 +199,25 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         }
 
         return Path.Combine(_configRoot, rawPath);
+    }
+
+    private static void EnsureLandscapeTicket(PrintTicket ticket)
+    {
+        ticket.PageOrientation = PageOrientation.Landscape;
+
+        var mediaSize = ticket.PageMediaSize;
+        if (mediaSize is null)
+        {
+            ticket.PageMediaSize = new PageMediaSize(PageMediaSizeName.NorthAmerica4x6);
+            return;
+        }
+
+        var width = mediaSize.Width ?? DefaultPageWidth;
+        var height = mediaSize.Height ?? DefaultPageHeight;
+        if (width < height)
+        {
+            ticket.PageMediaSize = new PageMediaSize(height, width);
+        }
     }
 
     private static FixedDocument BuildDocument(
@@ -291,7 +250,7 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
                 Source = image,
                 Width = imageWidth,
                 Height = imageHeight,
-                Stretch = fitToPage ? Stretch.Uniform : Stretch.UniformToFill
+                Stretch = Stretch.Uniform
             };
             RenderOptions.SetBitmapScalingMode(imageElement, BitmapScalingMode.HighQuality);
 
@@ -307,31 +266,4 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         return document;
     }
 
-    private static BitmapSource RotateBitmap(BitmapSource source, double rotationDegrees)
-    {
-        var transformed = new TransformedBitmap(source, new RotateTransform(rotationDegrees));
-        transformed.Freeze();
-        return transformed;
-    }
-
-    private static (double width, double height) NormalizePageSizeForOrientation(
-        PageOrientation? orientation,
-        double width,
-        double height)
-    {
-        var isPortrait = orientation is PageOrientation.Portrait or PageOrientation.ReversePortrait;
-        var isLandscape = orientation is PageOrientation.Landscape or PageOrientation.ReverseLandscape;
-
-        if (isPortrait && width > height)
-        {
-            return (height, width);
-        }
-
-        if (isLandscape && height > width)
-        {
-            return (height, width);
-        }
-
-        return (width, height);
-    }
 }
