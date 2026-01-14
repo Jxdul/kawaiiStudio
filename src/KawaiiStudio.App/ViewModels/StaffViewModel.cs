@@ -10,12 +10,10 @@ public sealed class StaffViewModel : ScreenViewModelBase
 {
     private readonly NavigationService _navigation;
     private readonly SettingsService _settings;
-    private readonly PrintTicketExportService _printTickets;
     private readonly RelayCommand _confirmEntryCommand;
     private readonly RelayCommand _cancelEntryCommand;
     private string _maxQuantity = string.Empty;
     private string _printName = string.Empty;
-    private string _twoBySixPrintTicketPath = string.Empty;
     private string _cashCom = string.Empty;
     private string _cashDenominations = string.Empty;
     private string _cardProvider = string.Empty;
@@ -25,18 +23,15 @@ public sealed class StaffViewModel : ScreenViewModelBase
     private bool _testMode;
     private StaffSettingEntry? _selectedEntry;
     private string _pendingEntryValue = string.Empty;
-    private string _printTicketStatus = string.Empty;
 
     public StaffViewModel(
         NavigationService navigation,
         ThemeCatalogService themeCatalog,
-        SettingsService settings,
-        PrintTicketExportService printTickets)
+        SettingsService settings)
         : base(themeCatalog, "staff")
     {
         _navigation = navigation;
         _settings = settings;
-        _printTickets = printTickets;
 
         SaveCommand = new RelayCommand(Save);
         ReloadCommand = new RelayCommand(ReloadApp);
@@ -50,7 +45,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
         NumpadBackspaceCommand = new RelayCommand(NumpadBackspace);
         NumpadClearCommand = new RelayCommand(NumpadClear);
         OpenTemplateEditorCommand = new RelayCommand(() => _navigation.Navigate("template_editor"));
-        ExportTwoBySixTicketCommand = new RelayCommand(ExportTwoBySixTicket);
         BackCommand = new RelayCommand(() => _navigation.Navigate("home"));
     }
 
@@ -67,7 +61,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
     public ICommand NumpadBackspaceCommand { get; }
     public ICommand NumpadClearCommand { get; }
     public ICommand OpenTemplateEditorCommand { get; }
-    public ICommand ExportTwoBySixTicketCommand { get; }
     public ICommand BackCommand { get; }
 
     public string MaxQuantity
@@ -86,16 +79,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
         set
         {
             _printName = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string TwoBySixPrintTicketPath
-    {
-        get => _twoBySixPrintTicketPath;
-        set
-        {
-            _twoBySixPrintTicketPath = value;
             OnPropertyChanged();
         }
     }
@@ -170,16 +153,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
         }
     }
 
-    public string PrintTicketStatus
-    {
-        get => _printTicketStatus;
-        private set
-        {
-            _printTicketStatus = value;
-            OnPropertyChanged();
-        }
-    }
-
     public StaffSettingEntry? SelectedEntry
     {
         get => _selectedEntry;
@@ -233,7 +206,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
         MaxQuantity = _settings.GetValue("MAX_QUANTITY", "10");
         CashDenominations = _settings.GetValue("CASH_DENOMS", "5,10,20");
         PrintName = _settings.GetValue("PrintName", "DS-RX1");
-        TwoBySixPrintTicketPath = _settings.GetValue("PRINT_TICKET_2X6", string.Empty);
         CashCom = _settings.GetValue("cash_COM", "COM4");
         CardProvider = _settings.GetValue("CARD_PROVIDER", "simulated");
         StripeTerminalBaseUrl = _settings.GetValue("STRIPE_TERMINAL_BASE_URL", "http://localhost:4242");
@@ -242,7 +214,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
         TestMode = string.Equals(_settings.GetValue("TEST_MODE", "false"), "true", System.StringComparison.OrdinalIgnoreCase);
         SelectedEntry = null;
         PendingEntryValue = string.Empty;
-        PrintTicketStatus = string.Empty;
     }
 
     private void ReloadApp()
@@ -267,7 +238,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
         _settings.SetValue("MAX_QUANTITY", MaxQuantity);
         _settings.SetValue("CASH_DENOMS", CashDenominations);
         _settings.SetValue("PrintName", PrintName);
-        _settings.SetValue("PRINT_TICKET_2X6", TwoBySixPrintTicketPath);
         _settings.SetValue("cash_COM", CashCom);
         _settings.SetValue("CARD_PROVIDER", CardProvider);
         _settings.SetValue("STRIPE_TERMINAL_BASE_URL", StripeTerminalBaseUrl);
@@ -276,49 +246,6 @@ public sealed class StaffViewModel : ScreenViewModelBase
         _settings.SetValue("TEST_MODE", TestMode ? "true" : "false");
 
         _settings.Save();
-    }
-
-    private void ExportTwoBySixTicket()
-    {
-        _settings.SetValue("PrintName", PrintName);
-        var result = _printTickets.ExportTwoBySixTicket();
-        if (result.ok && !string.IsNullOrWhiteSpace(result.path))
-        {
-            TwoBySixPrintTicketPath = result.path;
-            _settings.SetValue("PRINT_TICKET_2X6", result.path);
-            PrintTicketStatus = "Exported 2x6 ticket. Tap Save to persist.";
-            KawaiiStudio.App.App.Log($"PRINT_TICKET_EXPORT ok=true path={result.path}");
-            return;
-        }
-
-        PrintTicketStatus = FormatTicketError(result.error);
-        KawaiiStudio.App.App.Log($"PRINT_TICKET_EXPORT ok=false error={result.error ?? "unknown"}");
-    }
-
-    private static string FormatTicketError(string? error)
-    {
-        if (string.IsNullOrWhiteSpace(error))
-        {
-            return "Export failed.";
-        }
-
-        if (string.Equals(error, "print_queue_missing", System.StringComparison.OrdinalIgnoreCase))
-        {
-            return "Printer not found. Check the printer name.";
-        }
-
-        if (string.Equals(error, "print_ticket_empty", System.StringComparison.OrdinalIgnoreCase))
-        {
-            return "Exported ticket is empty.";
-        }
-
-        if (error.StartsWith("print_ticket_save_failed:", System.StringComparison.OrdinalIgnoreCase))
-        {
-            var reason = error["print_ticket_save_failed:".Length..].Trim();
-            return string.IsNullOrWhiteSpace(reason) ? "Export failed to save." : $"Export failed: {reason}";
-        }
-
-        return $"Export failed: {error}";
     }
 
     private void SelectEntry(StaffSettingEntry entry)

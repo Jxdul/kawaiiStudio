@@ -46,7 +46,7 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 * Canon camera integration via **Canon SDK/API**.
 * Preview frame capture from live view during session capture, compiled into video via ffmpeg.
 * Composite image generation + QR overlay.
-* Print pipeline to **DNP RX1HS**.
+* Print preview (physical printer integration removed - to be reimplemented).
 * Upload/hosting pipeline for image/video + QR destination (video compiled from preview frames via ffmpeg).
 * Logging + audit trail.
 
@@ -74,8 +74,11 @@ The app must be **themeable** and **frame-driven by folders**, so new frames and
 ### Required
 
 * **Camera:** Canon (via Canon SDK/API)
-* **Printer:** DNP RX1HS
 * **Cash acceptor:** Serial bill acceptor (events: inserted/accepted/rejected/jammed)
+
+### Optional / Future
+
+* **Printer:** DNP RX1HS (physical printer integration removed - preview only for now)
 
 ### Optional / future
 
@@ -321,26 +324,21 @@ Actions:
 
 ---
 
-### 7.11 Printing + Thank You
+### 7.11 Printing Preview + Thank You
 
 UI:
 
-* Printing status
-* Print preview (actual output)
+* Print preview (final composite image)
 * Show QR for review link (optional)
 * Thank-you message
 
 Rules:
 
-* Print in background queue; UI must not freeze.
-* On print success/failure:
+* Display final composite image preview.
+* Physical printing integration removed (to be reimplemented).
+* Auto-return:
 
-  * log result
-  * if failure: show “Call Staff” + allow staff to reprint.
-
-Auto-return:
-
-* After completion delay (configurable), return to Home.
+  * After completion delay (configurable), return to Home.
 
 ---
 
@@ -489,13 +487,10 @@ Configurable method(s), e.g.:
    * Totals: daily/weekly/all-time
    * Jam handling notes + “Mark resolved”
 
-4. **Printer (DNP RX1HS)**
+4. **Printer (Future)**
 
-   * Printer status
-   * Test print
-   * Print queue viewer
-   * Reprint last (with preview)
-   * Reprint from history
+   * Physical printer integration removed - preview only for now
+   * To be reimplemented with proper printer integration
 
 5. **Camera (Canon)**
 
@@ -539,7 +534,7 @@ Configurable method(s), e.g.:
 ### 12.2 If payment IS complete
 
 * Customer cannot back out to earlier steps.
-* If a critical error occurs (camera/printer/upload), show:
+* If a critical error occurs (camera/upload), show:
 
   * “Please call staff”
   * staff can:
@@ -616,11 +611,10 @@ JSON configs below are the long-term target.
   "kiosk": { "inactivitySeconds": 45, "lockAfterPayment": true },
   "capture": { "shotCount": 8, "countdownSeconds": 3, "secondsBetweenShots": 4 },
   "paths": { "frames": "./frames", "themes": "./themes/default", "logs": "./config/logs" },
-  "devices": {
-    "cashAcceptor": { "enabled": true, "comPort": "COM3", "baudRate": 9600 },
-    "printer": { "enabled": true },
-    "camera": { "enabled": true }
-  },
+    "devices": {
+      "cashAcceptor": { "enabled": true, "comPort": "COM3", "baudRate": 9600 },
+      "camera": { "enabled": true }
+    },
   "upload": { "enabled": true, "baseUrl": "https://your-landing-page-host/..." }
 }
 ```
@@ -666,9 +660,6 @@ To keep card payments and devices swappable, implement providers:
 * `IPaymentProvider`
 
   * `StartPayment(amount)`, `Cancel()`, events: `OnProgress`, `OnSuccess`, `OnFailure`
-* `IPrinterProvider`
-
-  * `Print(file, quantity)`, `GetStatus()`, events: `OnJobUpdate`
 * `IUploadProvider`
 
   * `UploadImage()`, `UploadVideo()` (video compiled from preview frames), returns `qrUrl/token`
@@ -694,13 +685,13 @@ Current implementation uses `ICardPaymentProvider` and `ICashAcceptorProvider` f
 * [x] Stripe Terminal test flow works via worker + simulator buttons
 * [ ] Canon capture reliably produces 8 images
 * [ ] Video compiled from preview frames and tied to session
-* [ ] DNP print job submitted and tracked
+* [ ] Print preview displays final composite (physical printing removed - to be reimplemented)
 
 ### Output
 
 * [ ] Final image includes QR top-right
 * [ ] QR resolves to page with image + compiled video
-* [ ] Reprint last includes preview
+* [ ] Print preview screen shows final composite
 * [ ] Per-frame layout overrides apply when present
 
 ### Staff tools
@@ -713,9 +704,9 @@ Current implementation uses `ICardPaymentProvider` and `ICashAcceptorProvider` f
 
 ## 18) Questions answers
 
-1. **Platform:** Windows kiosk? (recommended if using DNP + Canon SDK) # will be windows
+1. **Platform:** Windows kiosk? (recommended if using Canon SDK) # will be windows
 2. **Upload target:** local server vs cloud (affects QR landing page) # maybe will try to be on cloudflare
 3. **Card payment provider:** Square/Stripe terminal/Moneris/etc. (API constraints) # will try stripe
-4. **Exact print resolution/DPI & template pixel sizes** for each product # 1200 × 1800 for the full print. 2x6 will have to be duplicated side by side then sent to printer after with the option of cutting in half.
+4. **Exact print resolution/DPI & template pixel sizes** for each product # 1200 × 1800 for the full print. 2x6 will have to be duplicated side by side. Physical printer integration removed - preview only for now.
 
 

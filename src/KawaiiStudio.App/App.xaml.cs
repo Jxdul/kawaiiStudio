@@ -50,8 +50,6 @@ public partial class App : Application
         var cashAcceptor = new CashAcceptorService(cashProvider);
         var cardPayment = CreateCardPaymentProvider(settings);
         var uploadService = new UploadService(settings);
-        var printerService = new PrinterService(settings, appPaths);
-        var printTicketExportService = new PrintTicketExportService(settings, appPaths);
         var qrCodes = new QrCodeService();
         var frameComposer = new FrameCompositionService(templateCatalog, qrCodes, frameOverrides);
         SetDeviceStatusFromProviders(cameraProvider, cashProvider, cardPayment);
@@ -78,10 +76,10 @@ public partial class App : Application
         var processingViewModel = new ProcessingViewModel(navigation, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);
         var finalizeViewModel = new FinalizeViewModel(navigation, session, frameComposer, videoCompiler, uploadService, themeCatalog);
-        var printingViewModel = new PrintingViewModel(navigation, session, printerService, themeCatalog);
+        var printingViewModel = new PrintingViewModel(navigation, session, themeCatalog);
         var thankYouViewModel = new ThankYouViewModel(navigation, session, themeCatalog);
         var libraryViewModel = new LibraryViewModel(navigation, frameCatalog, themeCatalog, appPaths);
-        var staffViewModel = new StaffViewModel(navigation, themeCatalog, settings, printTicketExportService);
+        var staffViewModel = new StaffViewModel(navigation, themeCatalog, settings);
         var templateEditorViewModel = new TemplateEditorViewModel(navigation, templateStorage, templateCatalog, frameCatalog, frameOverrides, themeCatalog);
 
         navigation.Register("error", errorViewModel);

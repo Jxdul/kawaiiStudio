@@ -135,7 +135,7 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 
 ## Notes
 
-- Some screens remain placeholders for device integrations (camera, printer).
+- Some screens remain placeholders for device integrations (camera). Physical printer integration has been removed - only preview is available.
 - Camera focus failures currently prevent a capture; it should still take the photo even if autofocus misses.
 - See `specifications.txt` for the full functional spec and acceptance criteria.
 
@@ -145,7 +145,7 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 - Capture needs robust disconnect handling and per-screen timer tuning (video compilation from preview frames is implemented).
 - Upload hooks, QR destination hosting, and print queue integration are not implemented.
 - Config parsing for `config/app.json` and `config/pricing.json` is not implemented.
-- Provider interfaces for printer/upload are not defined yet.
+- Physical printer integration has been removed (preview only). Provider interfaces for upload are not defined yet.
 - Staff menu secret access, device diagnostics, and log export are not implemented.
 
 ## Planned integrations
@@ -161,7 +161,7 @@ Open `KawaiiStudio.sln` in Visual Studio 2022 and run the `KawaiiStudio.App` pro
 
 ### Remote Configuration Management
 - Receive configuration updates from server without requiring manual restarts
-- Dynamic reload of printer settings, timeouts, pricing, and frame availability
+- Dynamic reload of timeouts, pricing, and frame availability
 - Real-time application of configuration changes
 
 ### Health Monitoring & Reporting
