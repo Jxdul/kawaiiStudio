@@ -16,7 +16,7 @@ public partial class App : Application
     private DateTime _inactivityDeadlineUtc = DateTime.MinValue;
     private int _lastTimeoutSeconds = -1;
     private SettingsService? _settings;
-    private static readonly string[] TimeoutSuppressedScreens = { "home", "capture" };
+    private static readonly string[] TimeoutSuppressedScreens = { "home", "capture", "startup" };
 
     public static SessionService? Session { get; private set; }
     public static NavigationService? Navigation { get; private set; }

@@ -702,7 +702,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private void RecordCashPayment(decimal amount)
     {
-        if (_settings.TestMode || _cashTransactionLogged || amount <= 0m)
+        if (_cashTransactionLogged || amount <= 0m)
         {
             return;
         }
@@ -717,7 +717,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private void RecordCardPayment(decimal amount, string? paymentIntentId = null)
     {
-        if (_settings.TestMode || _cardTransactionLogged || amount <= 0m)
+        if (_cardTransactionLogged || amount <= 0m)
         {
             return;
         }

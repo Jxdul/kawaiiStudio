@@ -32,11 +32,6 @@ public sealed class FinanceTrackingService
         string? stripePaymentIntentId = null,
         CancellationToken cancellationToken = default)
     {
-        if (_settings.TestMode)
-        {
-            return false;
-        }
-
         if (session is null)
         {
             return false;
