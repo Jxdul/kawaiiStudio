@@ -74,6 +74,14 @@ Kiosk-style photobooth app for Windows with a complete customer flow and frame-d
 - QR code links to share page with download links
 - Session metadata tracking (session ID, booth ID)
 
+### Analytics & Tracking ✅ Integrated
+- **Transaction Tracking** - All payments automatically sent to server via `/api/transactions`
+- **Session Count Tracking** - Each transaction increments session count on server
+- **Revenue Analytics** - Cash and card revenue tracked separately
+- **Analytics Dashboard** - View revenue and session metrics in admin dashboard
+- **Time Period Analysis** - Server supports filtering by day, week, month, quarter, year
+- **Interactive Charts** - Revenue and session trends visualized in admin dashboard
+
 ### Output & Storage
 - Local session storage:
   - `Config/logs/YYYYMMDD/session_X/photos/` - Captured photos
@@ -250,20 +258,24 @@ The app reads configuration from `Config/appconfig.ini`. Key settings:
 - Dynamic reload of timeouts, pricing, and frame availability
 - Real-time application of configuration changes
 
-#### Health Monitoring & Reporting
-- Automatic heartbeat/ping to server to track booth online/offline status
-- Local device health tracking (CPU, memory, disk usage)
-- Automatic incident logging for crashes, failed payments, and hardware issues
-- Session health metrics reporting to server
+#### Health Monitoring & Reporting ✅ Implemented
+- ✅ Automatic heartbeat/ping to server to track booth online/offline status
+- ✅ Local device health tracking (CPU, memory, disk usage)
+- ✅ Device health metrics reporting to server via heartbeat endpoint
+- ✅ Automatic incident logging for crashes, failed payments, and hardware issues
+- ✅ Session tracking - Each transaction automatically increments session count on server
+- ✅ Revenue and session analytics visible in admin dashboard
 
 #### Photo Management Enhancements
 - Enhanced session metadata tracking (timestamp, size, layout, payment method) in uploads
 - Per-booth organization improvements on server side
 - Photo lifecycle management with retention policies
 
-#### Audit Logging
-- Comprehensive session activity logging with timestamps and user actions
-- Transaction logging (payments, captures, prints) with server transmission
+#### Audit Logging ✅ Partially Implemented
+- ✅ Transaction logging (payments) with server transmission via `/api/transactions`
+- ✅ Session activity logging locally in `Config/logs/YYYYMMDD/session.log`
+- ✅ Transaction data automatically aggregated in server analytics
+- ✅ Session counts tracked per transaction
 - Error and exception logging with context
 - Automatic log transmission to server for centralized audit trail
 
