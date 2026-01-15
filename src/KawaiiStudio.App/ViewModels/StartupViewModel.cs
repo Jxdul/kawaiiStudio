@@ -21,6 +21,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private const int CheckServerIndex = 6;
     private const int CheckBoothRegistrationIndex = 7;
     private const int CheckUploadIndex = 8;
+    private const int CheckFrameSyncIndex = 9;
     private static readonly System.TimeSpan DeviceCheckTimeout = System.TimeSpan.FromSeconds(5);
     private static readonly HttpClient Http = new()
     {
@@ -32,6 +33,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private readonly CashAcceptorService _cashAcceptor;
     private readonly ErrorViewModel _errorViewModel;
     private readonly BoothRegistrationService _boothRegistration;
+    private readonly FrameSyncService _frameSync;
     private readonly RelayCommand _retryCommand;
     private readonly RelayCommand _continueCommand;
     private readonly RelayCommand _forceContinueCommand;
@@ -50,7 +52,8 @@ public sealed class StartupViewModel : ScreenViewModelBase
         CashAcceptorService cashAcceptor,
         ErrorViewModel errorViewModel,
         ThemeCatalogService themeCatalog,
-        BoothRegistrationService boothRegistration)
+        BoothRegistrationService boothRegistration,
+        FrameSyncService frameSync)
         : base(themeCatalog, "startup")
     {
         _navigation = navigation;
@@ -59,6 +62,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         _cashAcceptor = cashAcceptor;
         _errorViewModel = errorViewModel;
         _boothRegistration = boothRegistration;
+        _frameSync = frameSync;
 
         _retryCommand = new RelayCommand(StartChecks, () => !_isChecking);
         RetryCommand = _retryCommand;
@@ -179,6 +183,12 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return;
         }
 
+        var frameSyncOk = await CheckFrameSyncAsync(Checks[CheckFrameSyncIndex], token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
         var allOk = cameraOk
             && liveViewOk
             && cashOk
@@ -187,7 +197,8 @@ public sealed class StartupViewModel : ScreenViewModelBase
             && internetOk
             && serverOk
             && boothRegistrationOk
-            && uploadOk;
+            && uploadOk
+            && frameSyncOk;
         UpdateCanContinue(allOk, !allOk);
         
         // Note: Heartbeat timer is now started immediately after successful registration
@@ -220,6 +231,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         Checks.Add(new StartupCheckItem("Server"));
         Checks.Add(new StartupCheckItem("Booth registration"));
         Checks.Add(new StartupCheckItem("Upload endpoint"));
+        Checks.Add(new StartupCheckItem("Frame sync"));
     }
 
     private void SetAllStatus(string status, string detail, bool isOk)
@@ -977,6 +989,58 @@ public sealed class StartupViewModel : ScreenViewModelBase
             item.SetStatus("Failed", "Upload error", false);
             KawaiiStudio.App.App.Log("STARTUP_UPLOAD_FAILED");
             return false;
+        }
+    }
+
+    private async Task<bool> CheckFrameSyncAsync(StartupCheckItem item, CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        item.SetStatus("Checking...", "Syncing frames", false);
+        KawaiiStudio.App.App.Log("STARTUP_FRAME_SYNC_CHECK");
+
+        try
+        {
+            var (ok, error) = await _frameSync.SyncFramesAsync(token);
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            if (!ok)
+            {
+                var errorMessage = error switch
+                {
+                    "missing_base_url" => "Missing server URL",
+                    "timeout" => "Timeout",
+                    _ => "Sync failed"
+                };
+                item.SetStatus("Failed", errorMessage, false);
+                KawaiiStudio.App.App.Log($"STARTUP_FRAME_SYNC_FAILED reason={error}");
+                // Don't block startup if sync fails - frames may still work
+                return true;
+            }
+
+            item.SetStatus("Synced", "Frames updated", true);
+            KawaiiStudio.App.App.Log("STARTUP_FRAME_SYNC_OK");
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            item.SetStatus("Failed", "Timeout", false);
+            KawaiiStudio.App.App.Log("STARTUP_FRAME_SYNC_TIMEOUT");
+            // Don't block startup on timeout
+            return true;
+        }
+        catch
+        {
+            item.SetStatus("Failed", "Sync error", false);
+            KawaiiStudio.App.App.Log("STARTUP_FRAME_SYNC_FAILED");
+            // Don't block startup on error
+            return true;
         }
     }
 
