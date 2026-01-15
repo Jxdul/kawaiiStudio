@@ -611,6 +611,12 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private void MarkPaid()
     {
+        // Create session only after payment is confirmed
+        if (string.IsNullOrWhiteSpace(_session.Current.SessionId))
+        {
+            _session.StartNewSession();
+        }
+        
         _session.Current.MarkPaid();
         _cashAcceptor.UpdateRemainingAmount(0m);
         OnPropertyChanged(nameof(IsPaid));

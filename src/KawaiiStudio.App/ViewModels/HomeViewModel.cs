@@ -74,7 +74,6 @@ public sealed class HomeViewModel : ScreenViewModelBase
 
     private void StartSession()
     {
-        _session.StartNewSession();
         _navigation.Navigate("size");
     }
 
