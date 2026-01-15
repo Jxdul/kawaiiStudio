@@ -15,8 +15,9 @@ namespace KawaiiStudio.App.Services;
 
 public sealed class WindowsPrinterProvider : IPrinterProvider
 {
-    private const double DefaultPageWidth = 6 * 96;  // 6 inches @ 96 DPI
-    private const double DefaultPageHeight = 4 * 96; // 4 inches @ 96 DPI
+    private const double DefaultPageWidth = 4 * 100;  // 4 inches @ 100 DPI
+    private const double DefaultPageHeight = 6 * 100; // 6 inches @ 100 DPI
+    private const double PrintScale = 0.97;
     private readonly SettingsService _settings;
 
     public WindowsPrinterProvider(SettingsService settings)
@@ -71,16 +72,18 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
             return (false, null, "print_queue_missing");
         }
 
-        // Use the queue's default print ticket without modifications
+        // Use the queue's default print ticket without modifications.
         var ticket = queue.DefaultPrintTicket;
         if (ticket is null)
         {
             return (false, null, "print_ticket_missing");
         }
 
-        // Use print ticket dimensions - driver knows the correct printable area
-        var pageWidth = ticket.PageMediaSize?.Width ?? DefaultPageWidth;
-        var pageHeight = ticket.PageMediaSize?.Height ?? DefaultPageHeight;
+        // Force 4x6 media size for all prints to avoid driver size mismatches.
+        var pageWidth = DefaultPageWidth;
+        var pageHeight = DefaultPageHeight;
+        ticket.PageMediaSize = new PageMediaSize(pageWidth, pageHeight);
+        ticket.PageOrientation = PageOrientation.Portrait;
 
         var document = BuildDocument(image, copyCount, pageWidth, pageHeight);
         var writer = PrintQueue.CreateXpsDocumentWriter(queue);
@@ -150,19 +153,24 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
                 Height = pageHeight
             };
 
-            // Fill the entire page with the image - let driver handle final adjustments
+            // Apply a small margin to avoid edge clipping.
+            var scaledWidth = pageWidth * PrintScale;
+            var scaledHeight = pageHeight * PrintScale;
+            var xOffset = (pageWidth - scaledWidth) / 2.0;
+            var yOffset = 0.0;
+
             var imageElement = new Image
             {
                 Source = image,
-                Width = pageWidth,
-                Height = pageHeight,
+                Width = scaledWidth,
+                Height = scaledHeight,
                 Stretch = Stretch.Fill  // Fill entire page area
             };
             RenderOptions.SetBitmapScalingMode(imageElement, BitmapScalingMode.HighQuality);
 
             // Position at top-left to fill entire printable area
-            FixedPage.SetLeft(imageElement, 0);
-            FixedPage.SetTop(imageElement, 0);
+            FixedPage.SetLeft(imageElement, xOffset);
+            FixedPage.SetTop(imageElement, yOffset);
             page.Children.Add(imageElement);
 
             var pageContent = new PageContent();

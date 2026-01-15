@@ -44,6 +44,11 @@ public sealed class PrinterService
         }
 
         var copyCount = CalculateCopyCount(size.Value, quantity);
+        if (_settings.TestMode)
+        {
+            copyCount = 1;
+            KawaiiStudio.App.App.Log("PRINT_TEST_MODE_OVERRIDE copies=1");
+        }
         if (copyCount <= 0)
         {
             return Task.FromResult((false, (string?)null, "print_copy_count_invalid"));
