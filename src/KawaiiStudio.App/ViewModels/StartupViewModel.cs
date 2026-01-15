@@ -19,7 +19,8 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private const int CheckPrinterIndex = 4;
     private const int CheckInternetIndex = 5;
     private const int CheckServerIndex = 6;
-    private const int CheckUploadIndex = 7;
+    private const int CheckBoothRegistrationIndex = 7;
+    private const int CheckUploadIndex = 8;
     private static readonly System.TimeSpan DeviceCheckTimeout = System.TimeSpan.FromSeconds(5);
     private static readonly HttpClient Http = new()
     {
@@ -30,6 +31,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private readonly CameraService _camera;
     private readonly CashAcceptorService _cashAcceptor;
     private readonly ErrorViewModel _errorViewModel;
+    private readonly BoothRegistrationService _boothRegistration;
     private readonly RelayCommand _retryCommand;
     private readonly RelayCommand _continueCommand;
     private readonly RelayCommand _forceContinueCommand;
@@ -47,7 +49,8 @@ public sealed class StartupViewModel : ScreenViewModelBase
         CameraService camera,
         CashAcceptorService cashAcceptor,
         ErrorViewModel errorViewModel,
-        ThemeCatalogService themeCatalog)
+        ThemeCatalogService themeCatalog,
+        BoothRegistrationService boothRegistration)
         : base(themeCatalog, "startup")
     {
         _navigation = navigation;
@@ -55,6 +58,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         _camera = camera;
         _cashAcceptor = cashAcceptor;
         _errorViewModel = errorViewModel;
+        _boothRegistration = boothRegistration;
 
         _retryCommand = new RelayCommand(StartChecks, () => !_isChecking);
         RetryCommand = _retryCommand;
@@ -160,6 +164,12 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return;
         }
 
+        var boothRegistrationOk = await CheckBoothRegistrationAsync(Checks[CheckBoothRegistrationIndex], token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
         var uploadOk = await CheckUploadAsync(Checks[CheckUploadIndex], token);
         if (token.IsCancellationRequested)
         {
@@ -173,10 +183,12 @@ public sealed class StartupViewModel : ScreenViewModelBase
             && printerOk
             && internetOk
             && serverOk
+            && boothRegistrationOk
             && uploadOk;
         UpdateCanContinue(allOk, !allOk);
         if (allOk)
         {
+            _boothRegistration.StartHeartbeatTimer();
             ScheduleAutoContinue();
         }
         else
@@ -206,6 +218,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         Checks.Add(new StartupCheckItem("Printer queue"));
         Checks.Add(new StartupCheckItem("Internet"));
         Checks.Add(new StartupCheckItem("Server"));
+        Checks.Add(new StartupCheckItem("Booth registration"));
         Checks.Add(new StartupCheckItem("Upload endpoint"));
     }
 
@@ -760,6 +773,83 @@ public sealed class StartupViewModel : ScreenViewModelBase
             KawaiiStudio.App.App.Log("STARTUP_INTERNET_FAILED");
             return false;
         }
+    }
+
+    private async Task<bool> CheckBoothRegistrationAsync(StartupCheckItem item, CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        if (_settings.TestMode)
+        {
+            item.SetStatus("Skipped", "Test mode", true);
+            KawaiiStudio.App.App.Log("STARTUP_BOOTH_REGISTRATION_SKIPPED reason=test_mode");
+            return true;
+        }
+
+        var boothId = _settings.BoothId?.Trim();
+        if (string.IsNullOrWhiteSpace(boothId))
+        {
+            item.SetStatus("Failed", "Missing BOOTH_ID", false);
+            KawaiiStudio.App.App.Log("STARTUP_BOOTH_REGISTRATION_FAILED reason=missing_booth_id");
+            return false;
+        }
+
+        item.SetStatus("Checking...", "Booth registration", false);
+        KawaiiStudio.App.App.Log("STARTUP_BOOTH_REGISTRATION_CHECK");
+
+        var (ok, isAllowed, error) = await _boothRegistration.CheckBoothAllowedAsync(token);
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        if (!ok)
+        {
+            var errorMessage = error switch
+            {
+                "missing_base_url" => "Missing server URL",
+                "missing_booth_id" => "Missing booth ID",
+                "timeout" => "Timeout",
+                _ => "Server error"
+            };
+            item.SetStatus("Failed", errorMessage, false);
+            KawaiiStudio.App.App.Log($"STARTUP_BOOTH_REGISTRATION_FAILED reason={error}");
+            return false;
+        }
+
+        if (!isAllowed)
+        {
+            item.SetStatus("Failed", "Booth ID not allowed", false);
+            KawaiiStudio.App.App.Log("STARTUP_BOOTH_REGISTRATION_FAILED reason=booth_not_allowed");
+            return false;
+        }
+
+        var (registerOk, registerError) = await _boothRegistration.RegisterAsync(cancellationToken: token);
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        if (!registerOk)
+        {
+            var errorMessage = registerError switch
+            {
+                "booth_not_allowed" => "Booth ID not allowed",
+                "missing_base_url" => "Missing server URL",
+                "timeout" => "Timeout",
+                _ => "Registration failed"
+            };
+            item.SetStatus("Failed", errorMessage, false);
+            KawaiiStudio.App.App.Log($"STARTUP_BOOTH_REGISTRATION_FAILED reason={registerError}");
+            return false;
+        }
+
+        item.SetStatus("Registered", $"Booth: {boothId}", true);
+        KawaiiStudio.App.App.Log($"STARTUP_BOOTH_REGISTRATION_OK boothId={boothId}");
+        return true;
     }
 
     private async Task<bool> CheckUploadAsync(StartupCheckItem item, CancellationToken token)

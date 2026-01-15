@@ -51,6 +51,7 @@ public partial class App : Application
         var cardPayment = CreateCardPaymentProvider(settings);
         var uploadService = new UploadService(settings);
         var financeTracking = new FinanceTrackingService(settings);
+        var boothRegistration = new BoothRegistrationService(settings);
         var printerProvider = new WindowsPrinterProvider(settings);
         var printerService = new PrinterService(settings, printerProvider);
         var qrCodes = new QrCodeService();
@@ -67,7 +68,7 @@ public partial class App : Application
         Navigation = navigation;
         navigation.Navigated += _ => ResetInactivityTimer();
         var errorViewModel = new ErrorViewModel();
-        var startupViewModel = new StartupViewModel(navigation, settings, cameraService, cashAcceptor, errorViewModel, themeCatalog);
+        var startupViewModel = new StartupViewModel(navigation, settings, cameraService, cashAcceptor, errorViewModel, themeCatalog, boothRegistration);
         var homeViewModel = new HomeViewModel(navigation, session, settings, themeCatalog);
         var sizeViewModel = new SizeViewModel(navigation, session, themeCatalog, settings);
         var quantityViewModel = new QuantityViewModel(navigation, session, themeCatalog, settings);
