@@ -50,6 +50,7 @@ public partial class App : Application
         var cashAcceptor = new CashAcceptorService(cashProvider);
         var cardPayment = CreateCardPaymentProvider(settings);
         var uploadService = new UploadService(settings);
+        var financeTracking = new FinanceTrackingService(settings);
         var printerProvider = new WindowsPrinterProvider(settings);
         var printerService = new PrinterService(settings, printerProvider);
         var qrCodes = new QrCodeService();
@@ -73,7 +74,7 @@ public partial class App : Application
         var layoutViewModel = new LayoutViewModel(navigation, session, themeCatalog);
         var categoryViewModel = new CategoryViewModel(navigation, session, frameCatalog, themeCatalog);
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
-        var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, cashAcceptor, cardPayment);
+        var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, financeTracking, cashAcceptor, cardPayment);
         var captureViewModel = new CaptureViewModel(navigation, session, cameraService, settings, themeCatalog, templateCatalog);
         var processingViewModel = new ProcessingViewModel(navigation, themeCatalog);
         var reviewViewModel = new ReviewViewModel(navigation, session, frameComposer, themeCatalog);

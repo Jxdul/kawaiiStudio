@@ -15,6 +15,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private readonly NavigationService _navigation;
     private readonly SessionService _session;
     private readonly SettingsService _settings;
+    private readonly FinanceTrackingService _financeTracking;
     private readonly ICashAcceptorProvider _cashAcceptor;
     private readonly ICardPaymentProvider _cardPayment;
     private readonly RelayCommand _insertFiveCommand;
@@ -52,12 +53,15 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private bool _isCashActive = true;
     private bool _isCardPaymentInProgress;
     private bool _isCardTestMode;
+    private bool _cashTransactionLogged;
+    private bool _cardTransactionLogged;
 
     public PaymentViewModel(
         NavigationService navigation,
         SessionService session,
         ThemeCatalogService themeCatalog,
         SettingsService settings,
+        FinanceTrackingService financeTracking,
         ICashAcceptorProvider cashAcceptor,
         ICardPaymentProvider cardPayment)
         : base(themeCatalog, "payment")
@@ -65,6 +69,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _navigation = navigation;
         _session = session;
         _settings = settings;
+        _financeTracking = financeTracking;
         _cashAcceptor = cashAcceptor;
         _cardPayment = cardPayment;
         _dispatcher = System.Windows.Application.Current?.Dispatcher;
@@ -285,6 +290,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     public override void OnNavigatedTo()
     {
         base.OnNavigatedTo();
+        ResetTransactionTracking();
         SetPaymentMode(true);
         UpdateSummary();
     }
@@ -484,6 +490,8 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             IsCardPaymentInProgress = false;
             CardStatusText = "Card approved.";
             KawaiiStudio.App.App.Log($"CARD_PAYMENT_APPROVED amount={e.Amount:0.00}");
+            RecordCashPayment(GetCashAmountToRecord());
+            RecordCardPayment(e.Amount);
             MarkPaid();
         });
     }
@@ -572,6 +580,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
             if (total > 0m && _session.Current.CashInserted >= total)
             {
+                RecordCashPayment(GetCashAmountToRecord());
                 MarkPaid();
             }
         });
@@ -661,6 +670,64 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
         var remaining = total - _session.Current.CashInserted;
         return remaining < 0m ? 0m : remaining;
+    }
+
+    private void ResetTransactionTracking()
+    {
+        _cashTransactionLogged = false;
+        _cardTransactionLogged = false;
+    }
+
+    private decimal GetCashAmountToRecord()
+    {
+        var cashInserted = _session.Current.CashInserted;
+        if (cashInserted <= 0m)
+        {
+            return 0m;
+        }
+
+        var total = _session.Current.PriceTotal;
+        if (total <= 0m)
+        {
+            total = CalculateTotalPrice();
+        }
+
+        if (total <= 0m)
+        {
+            return cashInserted;
+        }
+
+        return cashInserted > total ? total : cashInserted;
+    }
+
+    private void RecordCashPayment(decimal amount)
+    {
+        if (_settings.TestMode || _cashTransactionLogged || amount <= 0m)
+        {
+            return;
+        }
+
+        _cashTransactionLogged = true;
+        _ = _financeTracking.RecordTransactionAsync(
+            _session.Current,
+            "cash",
+            amount,
+            cancellationToken: CancellationToken.None);
+    }
+
+    private void RecordCardPayment(decimal amount)
+    {
+        if (_settings.TestMode || _cardTransactionLogged || amount <= 0m)
+        {
+            return;
+        }
+
+        _cardTransactionLogged = true;
+        _ = _financeTracking.RecordTransactionAsync(
+            _session.Current,
+            "card",
+            amount,
+            cancellationToken: CancellationToken.None);
     }
 
     private static string FormatSize(PrintSize? size)

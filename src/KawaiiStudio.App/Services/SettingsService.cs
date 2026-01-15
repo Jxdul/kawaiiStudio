@@ -281,6 +281,7 @@ public sealed class SettingsService
         _values["STRIPE_TERMINAL_BASE_URL"] = "https://kawaii-studio-server.jxdul.workers.dev";
         _values["STRIPE_TERMINAL_READER_ID"] = string.Empty;
         _values["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty;
+        _values["FINANCE_BASE_URL"] = string.Empty;
         _values["UPLOAD_BASE_URL"] = string.Empty;
         _values["UPLOAD_ENABLED"] = "false";
         _values["BOOTH_ID"] = string.Empty;
@@ -337,6 +338,7 @@ public sealed class SettingsService
             ["STRIPE_TERMINAL_BASE_URL"] = "https://kawaii-studio-server.jxdul.workers.dev",
             ["STRIPE_TERMINAL_READER_ID"] = string.Empty,
             ["STRIPE_TERMINAL_LOCATION_ID"] = string.Empty,
+            ["FINANCE_BASE_URL"] = string.Empty,
             ["UPLOAD_BASE_URL"] = string.Empty,
             ["UPLOAD_ENABLED"] = "false",
             ["BOOTH_ID"] = string.Empty,
@@ -404,6 +406,7 @@ public sealed class SettingsService
                 "STRIPE_TERMINAL_BASE_URL",
                 "STRIPE_TERMINAL_READER_ID",
                 "STRIPE_TERMINAL_LOCATION_ID",
+                "FINANCE_BASE_URL",
                 "UPLOAD_BASE_URL",
                 "UPLOAD_ENABLED",
                 "BOOTH_ID",
