@@ -38,6 +38,7 @@ public sealed class SettingsService
     public string UploadBaseUrl => GetString("UPLOAD_BASE_URL", string.Empty);
     public bool UploadEnabled => GetBool("UPLOAD_ENABLED", false);
     public string BoothId => GetString("BOOTH_ID", string.Empty);
+    public string StaffPin => GetString("STAFF_PIN", string.Empty);
 
     public string GetValue(string key, string fallback = "")
     {
@@ -285,6 +286,7 @@ public sealed class SettingsService
         _values["BOOTH_ID"] = string.Empty;
         _values["CAMERA_PROVIDER"] = "simulated";
         _values["TEST_MODE"] = "false";
+        _values["STAFF_PIN"] = string.Empty;
         _values["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
         _values["TIMEOUT_STARTUP"] = "30";
         _values["TIMEOUT_HOME"] = "30";
@@ -340,6 +342,7 @@ public sealed class SettingsService
             ["BOOTH_ID"] = string.Empty,
             ["CAMERA_PROVIDER"] = "simulated",
             ["TEST_MODE"] = "false",
+            ["STAFF_PIN"] = string.Empty,
             ["TIMEOUT_DEFAULT"] = DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture),
             ["TIMEOUT_STARTUP"] = "30",
             ["TIMEOUT_HOME"] = "30",
@@ -405,7 +408,8 @@ public sealed class SettingsService
                 "UPLOAD_ENABLED",
                 "BOOTH_ID",
                 "CAMERA_PROVIDER",
-                "TEST_MODE"
+                "TEST_MODE",
+                "STAFF_PIN"
             },
             new[]
             {

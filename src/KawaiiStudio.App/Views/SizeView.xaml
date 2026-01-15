@@ -18,6 +18,57 @@
         <Button Content="Back" Command="{Binding BackCommand}" Margin="0,16,0,0" />
       </StackPanel>
     </Grid>
+    <Button Command="{Binding StaffCommand}"
+            Width="80"
+            Height="80"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Background="Transparent"
+            BorderThickness="0"
+            Padding="0"
+            Margin="0"
+            Opacity="0" />
+    <Grid Background="#80000000"
+          Visibility="{Binding IsStaffPinPromptVisible, Converter={StaticResource BoolToVisibility}}"
+          Panel.ZIndex="2">
+      <Button Command="{Binding StaffPinCancelCommand}"
+              Background="Transparent"
+              BorderThickness="0" />
+      <Border Background="#EEE7DD"
+              CornerRadius="12"
+              Padding="16"
+              Width="420"
+              Panel.ZIndex="1"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel>
+          <TextBlock Text="Staff PIN" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Enter the staff PIN to continue" FontSize="12" Foreground="#8A8A8A" Margin="0,6,0,0" />
+          <Border Background="#E2D9CF" CornerRadius="6" Padding="10" Margin="0,10,0,8">
+            <TextBlock Text="{Binding StaffPinDisplay}" FontSize="20" />
+          </Border>
+          <TextBlock Text="{Binding StaffPinError}" FontSize="12" Foreground="#B91C1C" Margin="0,0,0,8" />
+          <UniformGrid Rows="4" Columns="3" Margin="0,0,0,12">
+            <Button Content="1" Command="{Binding StaffPinInputCommand}" CommandParameter="1" Padding="12,10" />
+            <Button Content="2" Command="{Binding StaffPinInputCommand}" CommandParameter="2" Padding="12,10" />
+            <Button Content="3" Command="{Binding StaffPinInputCommand}" CommandParameter="3" Padding="12,10" />
+            <Button Content="4" Command="{Binding StaffPinInputCommand}" CommandParameter="4" Padding="12,10" />
+            <Button Content="5" Command="{Binding StaffPinInputCommand}" CommandParameter="5" Padding="12,10" />
+            <Button Content="6" Command="{Binding StaffPinInputCommand}" CommandParameter="6" Padding="12,10" />
+            <Button Content="7" Command="{Binding StaffPinInputCommand}" CommandParameter="7" Padding="12,10" />
+            <Button Content="8" Command="{Binding StaffPinInputCommand}" CommandParameter="8" Padding="12,10" />
+            <Button Content="9" Command="{Binding StaffPinInputCommand}" CommandParameter="9" Padding="12,10" />
+            <Button Content="CLR" Command="{Binding StaffPinClearCommand}" Padding="12,10" />
+            <Button Content="0" Command="{Binding StaffPinInputCommand}" CommandParameter="0" Padding="12,10" />
+            <Button Content="DEL" Command="{Binding StaffPinBackspaceCommand}" Padding="12,10" />
+          </UniformGrid>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Command="{Binding StaffPinCancelCommand}" Padding="16,8" />
+            <Button Content="Enter" Command="{Binding StaffPinConfirmCommand}" Padding="16,8" Margin="8,0,0,0" Width="120" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
 </UserControl>
 

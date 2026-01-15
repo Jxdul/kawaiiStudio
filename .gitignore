@@ -57,6 +57,12 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+# Project build outputs
+src/KawaiiStudio.App/bin/
+src/KawaiiStudio.App/obj/
+tools/preview-tester/bin/
+tools/preview-tester/obj/
+
 # .NET Core
 project.lock.json
 project.fragment.lock.json
