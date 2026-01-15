@@ -81,7 +81,7 @@ public partial class App : Application
         var printingViewModel = new PrintingViewModel(navigation, session, printerService, themeCatalog);
         var thankYouViewModel = new ThankYouViewModel(navigation, session, themeCatalog);
         var libraryViewModel = new LibraryViewModel(navigation, frameCatalog, themeCatalog, appPaths);
-        var staffViewModel = new StaffViewModel(navigation, themeCatalog, settings);
+        var staffViewModel = new StaffViewModel(navigation, themeCatalog, settings, cameraService, cashAcceptor, cardPayment);
         var templateEditorViewModel = new TemplateEditorViewModel(navigation, templateStorage, templateCatalog, frameCatalog, frameOverrides, themeCatalog);
 
         navigation.Register("error", errorViewModel);

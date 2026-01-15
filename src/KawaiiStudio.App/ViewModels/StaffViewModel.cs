@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using KawaiiStudio.App.Services;
@@ -8,8 +9,17 @@ namespace KawaiiStudio.App.ViewModels;
 
 public sealed class StaffViewModel : ScreenViewModelBase
 {
+    private const string SectionPricing = "pricing";
+    private const string SectionPayments = "payments";
+    private const string SectionHardware = "hardware";
+    private const string SectionTimeouts = "timeouts";
+    private const string SectionTemplates = "templates";
+
     private readonly NavigationService _navigation;
     private readonly SettingsService _settings;
+    private readonly CameraService _camera;
+    private readonly CashAcceptorService _cashAcceptor;
+    private readonly ICardPaymentProvider _cardPayment;
     private readonly RelayCommand _confirmEntryCommand;
     private readonly RelayCommand _cancelEntryCommand;
     private string _maxQuantity = string.Empty;
@@ -23,21 +33,30 @@ public sealed class StaffViewModel : ScreenViewModelBase
     private string _stripeTerminalReaderId = string.Empty;
     private string _stripeTerminalLocationId = string.Empty;
     private bool _testMode;
+    private string _activeSection = string.Empty;
     private StaffSettingEntry? _selectedEntry;
     private string _pendingEntryValue = string.Empty;
 
     public StaffViewModel(
         NavigationService navigation,
         ThemeCatalogService themeCatalog,
-        SettingsService settings)
+        SettingsService settings,
+        CameraService camera,
+        CashAcceptorService cashAcceptor,
+        ICardPaymentProvider cardPayment)
         : base(themeCatalog, "staff")
     {
         _navigation = navigation;
         _settings = settings;
+        _camera = camera;
+        _cashAcceptor = cashAcceptor;
+        _cardPayment = cardPayment;
 
         SaveCommand = new RelayCommand(Save);
         ReloadCommand = new RelayCommand(ReloadApp);
         CloseAppCommand = new RelayCommand(CloseApp);
+        OpenSectionCommand = new RelayCommand<string>(OpenSection);
+        BackToMenuCommand = new RelayCommand(BackToMenu);
         SelectEntryCommand = new RelayCommand<StaffSettingEntry>(SelectEntry);
         _confirmEntryCommand = new RelayCommand(ConfirmEntry, () => SelectedEntry is not null);
         ConfirmEntryCommand = _confirmEntryCommand;
@@ -56,6 +75,8 @@ public sealed class StaffViewModel : ScreenViewModelBase
     public ICommand SaveCommand { get; }
     public ICommand ReloadCommand { get; }
     public ICommand CloseAppCommand { get; }
+    public ICommand OpenSectionCommand { get; }
+    public ICommand BackToMenuCommand { get; }
     public ICommand SelectEntryCommand { get; }
     public ICommand ConfirmEntryCommand { get; }
     public ICommand CancelEntryCommand { get; }
@@ -175,6 +196,71 @@ public sealed class StaffViewModel : ScreenViewModelBase
         }
     }
 
+    public string ActiveSection
+    {
+        get => _activeSection;
+        private set
+        {
+            var normalized = value?.Trim() ?? string.Empty;
+            if (string.Equals(_activeSection, normalized, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _activeSection = normalized;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsMenuVisible));
+            OnPropertyChanged(nameof(IsSectionVisible));
+            OnPropertyChanged(nameof(IsPricingVisible));
+            OnPropertyChanged(nameof(IsPaymentsVisible));
+            OnPropertyChanged(nameof(IsHardwareVisible));
+            OnPropertyChanged(nameof(IsTimeoutsVisible));
+            OnPropertyChanged(nameof(IsTemplatesVisible));
+            OnPropertyChanged(nameof(ActiveSectionTitle));
+        }
+    }
+
+    public bool IsMenuVisible => string.IsNullOrWhiteSpace(_activeSection);
+    public bool IsSectionVisible => !IsMenuVisible;
+    public bool IsPricingVisible => string.Equals(_activeSection, SectionPricing, System.StringComparison.OrdinalIgnoreCase);
+    public bool IsPaymentsVisible => string.Equals(_activeSection, SectionPayments, System.StringComparison.OrdinalIgnoreCase);
+    public bool IsHardwareVisible => string.Equals(_activeSection, SectionHardware, System.StringComparison.OrdinalIgnoreCase);
+    public bool IsTimeoutsVisible => string.Equals(_activeSection, SectionTimeouts, System.StringComparison.OrdinalIgnoreCase);
+    public bool IsTemplatesVisible => string.Equals(_activeSection, SectionTemplates, System.StringComparison.OrdinalIgnoreCase);
+
+    public string ActiveSectionTitle
+    {
+        get
+        {
+            if (IsPricingVisible)
+            {
+                return "Pricing";
+            }
+
+            if (IsPaymentsVisible)
+            {
+                return "Payments";
+            }
+
+            if (IsHardwareVisible)
+            {
+                return "Hardware";
+            }
+
+            if (IsTimeoutsVisible)
+            {
+                return "Timeouts";
+            }
+
+            if (IsTemplatesVisible)
+            {
+                return "Templates";
+            }
+
+            return "Staff Menu";
+        }
+    }
+
     public StaffSettingEntry? SelectedEntry
     {
         get => _selectedEntry;
@@ -204,6 +290,7 @@ public sealed class StaffViewModel : ScreenViewModelBase
     {
         base.OnNavigatedTo();
         LoadFromSettings();
+        BackToMenu();
         KawaiiStudio.App.App.Log("STAFF_ACCESS");
     }
 
@@ -232,7 +319,7 @@ public sealed class StaffViewModel : ScreenViewModelBase
         PrinterName4x6 = _settings.GetValue("PRINTER_NAME_4X6", "DS-RX1-4x6");
         CashCom = _settings.GetValue("cash_COM", "COM4");
         CardProvider = _settings.GetValue("CARD_PROVIDER", "simulated");
-        StripeTerminalBaseUrl = _settings.GetValue("STRIPE_TERMINAL_BASE_URL", "http://localhost:4242");
+        StripeTerminalBaseUrl = _settings.GetValue("STRIPE_TERMINAL_BASE_URL", "https://kawaii-studio-server.jxdul.workers.dev");
         StripeTerminalReaderId = _settings.GetValue("STRIPE_TERMINAL_READER_ID", string.Empty);
         StripeTerminalLocationId = _settings.GetValue("STRIPE_TERMINAL_LOCATION_ID", string.Empty);
         TestMode = string.Equals(_settings.GetValue("TEST_MODE", "false"), "true", System.StringComparison.OrdinalIgnoreCase);
@@ -240,8 +327,35 @@ public sealed class StaffViewModel : ScreenViewModelBase
         PendingEntryValue = string.Empty;
     }
 
-    private void ReloadApp()
+    private async void ReloadApp()
     {
+        try
+        {
+            await _cardPayment.DisconnectAsync(CancellationToken.None);
+        }
+        catch
+        {
+            App.Log("STAFF_RELOAD_DISCONNECT_FAILED device=card");
+        }
+
+        try
+        {
+            await _cashAcceptor.DisconnectAsync(CancellationToken.None);
+        }
+        catch
+        {
+            App.Log("STAFF_RELOAD_DISCONNECT_FAILED device=cash");
+        }
+
+        try
+        {
+            await _camera.DisconnectAsync(CancellationToken.None);
+        }
+        catch
+        {
+            App.Log("STAFF_RELOAD_DISCONNECT_FAILED device=camera");
+        }
+
         LoadFromSettings();
         App.Log("STAFF_RELOAD");
         _navigation.Navigate("startup");
@@ -272,6 +386,25 @@ public sealed class StaffViewModel : ScreenViewModelBase
         _settings.SetValue("TEST_MODE", TestMode ? "true" : "false");
 
         _settings.Save();
+    }
+
+    private void OpenSection(string sectionKey)
+    {
+        if (string.IsNullOrWhiteSpace(sectionKey))
+        {
+            return;
+        }
+
+        SelectedEntry = null;
+        PendingEntryValue = string.Empty;
+        ActiveSection = sectionKey;
+    }
+
+    private void BackToMenu()
+    {
+        SelectedEntry = null;
+        PendingEntryValue = string.Empty;
+        ActiveSection = string.Empty;
     }
 
     private void SelectEntry(StaffSettingEntry entry)

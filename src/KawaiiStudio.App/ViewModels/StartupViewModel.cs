@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Net.Http;
+using System.Printing;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +12,14 @@ namespace KawaiiStudio.App.ViewModels;
 
 public sealed class StartupViewModel : ScreenViewModelBase
 {
+    private const int CheckCameraIndex = 0;
+    private const int CheckCameraLiveViewIndex = 1;
+    private const int CheckCashIndex = 2;
+    private const int CheckCashAcceptIndex = 3;
+    private const int CheckPrinterIndex = 4;
+    private const int CheckInternetIndex = 5;
+    private const int CheckServerIndex = 6;
+    private const int CheckUploadIndex = 7;
     private static readonly System.TimeSpan DeviceCheckTimeout = System.TimeSpan.FromSeconds(5);
     private static readonly HttpClient Http = new()
     {
@@ -25,6 +35,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
     private readonly RelayCommand _forceContinueCommand;
     private readonly RelayCommand _enableTestModeCommand;
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _autoContinueCts;
     private bool _isChecking;
     private bool _canContinue;
     private bool _hasErrors;
@@ -87,6 +98,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             _cts?.Cancel();
         }
 
+        _autoContinueCts?.Cancel();
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
@@ -112,21 +124,65 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return;
         }
 
+        var liveViewOk = await CheckCameraLiveViewAsync(Checks[CheckCameraLiveViewIndex], cameraOk, token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
         var cashOk = await CheckCashAsync(testMode, token);
         if (token.IsCancellationRequested)
         {
             return;
         }
 
-        var serverOk = await CheckServerAsync(Checks[2], token);
+        var cashAcceptOk = await CheckCashAcceptAsync(Checks[CheckCashAcceptIndex], cashOk, token);
         if (token.IsCancellationRequested)
         {
             return;
         }
 
-        var allOk = cashOk && serverOk;
-        var hasErrors = !(cameraOk && cashOk && serverOk);
-        UpdateCanContinue(allOk && !hasErrors, hasErrors);
+        var printerOk = await CheckPrinterQueuesAsync(Checks[CheckPrinterIndex], token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var internetOk = await CheckInternetAsync(Checks[CheckInternetIndex], token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var serverOk = await CheckServerAsync(Checks[CheckServerIndex], token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var uploadOk = await CheckUploadAsync(Checks[CheckUploadIndex], token);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var allOk = cameraOk
+            && liveViewOk
+            && cashOk
+            && cashAcceptOk
+            && printerOk
+            && internetOk
+            && serverOk
+            && uploadOk;
+        UpdateCanContinue(allOk, !allOk);
+        if (allOk)
+        {
+            ScheduleAutoContinue();
+        }
+        else
+        {
+            _autoContinueCts?.Cancel();
+        }
 
         _isChecking = false;
         _retryCommand.RaiseCanExecuteChanged();
@@ -144,8 +200,13 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
 
         Checks.Add(new StartupCheckItem("Camera"));
+        Checks.Add(new StartupCheckItem("Camera live view"));
         Checks.Add(new StartupCheckItem("Cash reader"));
+        Checks.Add(new StartupCheckItem("Cash accept"));
+        Checks.Add(new StartupCheckItem("Printer queue"));
+        Checks.Add(new StartupCheckItem("Internet"));
         Checks.Add(new StartupCheckItem("Server"));
+        Checks.Add(new StartupCheckItem("Upload endpoint"));
     }
 
     private void SetAllStatus(string status, string detail, bool isOk)
@@ -171,7 +232,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return false;
         }
 
-        var item = Checks[0];
+        var item = Checks[CheckCameraIndex];
         _camera.UseProvider(CreateCameraProvider());
         if (testMode)
         {
@@ -271,6 +332,84 @@ public sealed class StartupViewModel : ScreenViewModelBase
         return false;
     }
 
+    private async Task<bool> CheckCameraLiveViewAsync(
+        StartupCheckItem item,
+        bool cameraOk,
+        CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        if (!cameraOk)
+        {
+            item.SetStatus("Skipped", "Camera unavailable", false);
+            KawaiiStudio.App.App.Log("STARTUP_LIVEVIEW_SKIP");
+            return false;
+        }
+
+        item.SetStatus("Checking...", "Live view start/stop", false);
+        KawaiiStudio.App.App.Log("STARTUP_LIVEVIEW_CHECK");
+
+        var startAttempt = await RunCheckWithTimeout(_camera.StartLiveViewAsync, DeviceCheckTimeout, token);
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        if (!startAttempt.ok)
+        {
+            if (startAttempt.timedOut)
+            {
+                item.SetStatus("Failed", "Start timeout", false);
+                KawaiiStudio.App.App.Log("STARTUP_LIVEVIEW_START_TIMEOUT");
+            }
+            else
+            {
+                item.SetStatus("Failed", "Live view failed", false);
+                KawaiiStudio.App.App.Log("STARTUP_LIVEVIEW_START_FAILED");
+            }
+
+            return false;
+        }
+
+        try
+        {
+            var stopTask = _camera.StopLiveViewAsync(token);
+            var completed = await Task.WhenAny(stopTask, Task.Delay(DeviceCheckTimeout, token));
+            if (completed != stopTask)
+            {
+                item.SetStatus("Failed", "Stop timeout", false);
+                KawaiiStudio.App.App.Log("STARTUP_LIVEVIEW_STOP_TIMEOUT");
+                return false;
+            }
+
+            await stopTask;
+        }
+        catch (OperationCanceledException)
+        {
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            item.SetStatus("Failed", "Stop canceled", false);
+            KawaiiStudio.App.App.Log("STARTUP_LIVEVIEW_STOP_CANCELED");
+            return false;
+        }
+        catch
+        {
+            item.SetStatus("Failed", "Stop error", false);
+            KawaiiStudio.App.App.Log("STARTUP_LIVEVIEW_STOP_FAILED");
+            return false;
+        }
+
+        item.SetStatus("Connected", "Live view ok", true);
+        KawaiiStudio.App.App.Log("STARTUP_LIVEVIEW_OK");
+        return true;
+    }
+
     private ICameraProvider CreateCameraProvider()
     {
         var providerKey = _settings.GetValue("CAMERA_PROVIDER", "simulated");
@@ -289,7 +428,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return false;
         }
 
-        var item = Checks[1];
+        var item = Checks[CheckCashIndex];
         item.SetStatus("Checking...", string.Empty, false);
 
         if (testMode)
@@ -377,6 +516,118 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
 
         return false;
+    }
+
+    private async Task<bool> CheckCashAcceptAsync(
+        StartupCheckItem item,
+        bool cashOk,
+        CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        if (!cashOk)
+        {
+            item.SetStatus("Skipped", "Cash reader unavailable", false);
+            KawaiiStudio.App.App.Log("STARTUP_CASH_ACCEPT_SKIP");
+            return false;
+        }
+
+        item.SetStatus("Checking...", "Enable/disable", false);
+        KawaiiStudio.App.App.Log("STARTUP_CASH_ACCEPT_CHECK");
+
+        try
+        {
+            _cashAcceptor.UpdateRemainingAmount(1m);
+            await Task.Delay(200, token);
+            _cashAcceptor.UpdateRemainingAmount(0m);
+        }
+        catch (OperationCanceledException)
+        {
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            item.SetStatus("Failed", "Canceled", false);
+            KawaiiStudio.App.App.Log("STARTUP_CASH_ACCEPT_CANCELED");
+            return false;
+        }
+        catch
+        {
+            item.SetStatus("Failed", "Toggle failed", false);
+            KawaiiStudio.App.App.Log("STARTUP_CASH_ACCEPT_FAILED");
+            return false;
+        }
+
+        item.SetStatus("Connected", "Accept toggle ok", true);
+        KawaiiStudio.App.App.Log("STARTUP_CASH_ACCEPT_OK");
+        return true;
+    }
+
+    private Task<bool> CheckPrinterQueuesAsync(StartupCheckItem item, CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+        {
+            return Task.FromResult(false);
+        }
+
+        item.SetStatus("Checking...", "Printer queues", false);
+        KawaiiStudio.App.App.Log("STARTUP_PRINTER_CHECK");
+
+        var details = new List<string>();
+        var ok2x6 = TryResolvePrinterQueue(_settings.PrinterName2x6, "2x6", details);
+        var ok4x6 = TryResolvePrinterQueue(_settings.PrinterName4x6, "4x6", details);
+
+        if (token.IsCancellationRequested)
+        {
+            return Task.FromResult(false);
+        }
+
+        if (ok2x6 && ok4x6)
+        {
+            item.SetStatus("Connected", "Queues ready", true);
+            KawaiiStudio.App.App.Log("STARTUP_PRINTER_OK");
+            return Task.FromResult(true);
+        }
+
+        item.SetStatus("Failed", string.Join("; ", details), false);
+        KawaiiStudio.App.App.Log("STARTUP_PRINTER_FAILED");
+        return Task.FromResult(false);
+    }
+
+    private static bool TryResolvePrinterQueue(
+        string printerName,
+        string label,
+        List<string> details)
+    {
+        if (string.IsNullOrWhiteSpace(printerName))
+        {
+            details.Add($"{label}: name missing");
+            return false;
+        }
+
+        try
+        {
+            var queue = new PrintQueue(new PrintServer(), printerName);
+            queue.Refresh();
+            if (queue.IsOffline)
+            {
+                details.Add($"{label}: offline");
+                return false;
+            }
+
+            details.Add($"{label}: {queue.Name}");
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            var reason = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+            details.Add($"{label}: {reason}");
+            return false;
+        }
     }
 
     private ICashAcceptorProvider CreateCashProvider(bool testMode)
@@ -473,6 +724,116 @@ public sealed class StartupViewModel : ScreenViewModelBase
         }
     }
 
+    private async Task<bool> CheckInternetAsync(StartupCheckItem item, CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        item.SetStatus("Checking...", "Cloudflare ping", false);
+        KawaiiStudio.App.App.Log("STARTUP_INTERNET_CHECK");
+
+        try
+        {
+            using var response = await Http.GetAsync("https://cloudflare.com/cdn-cgi/trace", token);
+            if (!response.IsSuccessStatusCode)
+            {
+                item.SetStatus("Failed", $"HTTP {(int)response.StatusCode}", false);
+                KawaiiStudio.App.App.Log($"STARTUP_INTERNET_FAILED status={(int)response.StatusCode}");
+                return false;
+            }
+
+            item.SetStatus("Connected", "Cloudflare reachable", true);
+            KawaiiStudio.App.App.Log("STARTUP_INTERNET_OK");
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            item.SetStatus("Failed", "Timeout", false);
+            KawaiiStudio.App.App.Log("STARTUP_INTERNET_TIMEOUT");
+            return false;
+        }
+        catch
+        {
+            item.SetStatus("Failed", "Network error", false);
+            KawaiiStudio.App.App.Log("STARTUP_INTERNET_FAILED");
+            return false;
+        }
+    }
+
+    private async Task<bool> CheckUploadAsync(StartupCheckItem item, CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        if (!_settings.UploadEnabled)
+        {
+            item.SetStatus("Disabled", "Upload off", true);
+            KawaiiStudio.App.App.Log("STARTUP_UPLOAD_DISABLED");
+            return true;
+        }
+
+        var baseUrl = _settings.UploadBaseUrl?.Trim().TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            item.SetStatus("Failed", "Missing UPLOAD_BASE_URL", false);
+            KawaiiStudio.App.App.Log("STARTUP_UPLOAD_FAILED reason=missing_base_url");
+            return false;
+        }
+
+        item.SetStatus("Checking...", "Upload health", false);
+        KawaiiStudio.App.App.Log("STARTUP_UPLOAD_CHECK");
+
+        var url = $"{baseUrl}/health";
+
+        try
+        {
+            using var response = await Http.GetAsync(url, token);
+            if (!response.IsSuccessStatusCode)
+            {
+                item.SetStatus("Failed", "Upload not reachable", false);
+                KawaiiStudio.App.App.Log($"STARTUP_UPLOAD_FAILED status={(int)response.StatusCode}");
+                return false;
+            }
+
+            var body = await response.Content.ReadAsStringAsync(token);
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                item.SetStatus("Failed", "Empty response", false);
+                KawaiiStudio.App.App.Log("STARTUP_UPLOAD_FAILED reason=empty_response");
+                return false;
+            }
+
+            using var json = JsonDocument.Parse(body);
+            var ok = json.RootElement.TryGetProperty("ok", out var okValue) && okValue.GetBoolean();
+            if (!ok)
+            {
+                item.SetStatus("Failed", "Upload unhealthy", false);
+                KawaiiStudio.App.App.Log("STARTUP_UPLOAD_FAILED reason=unhealthy");
+                return false;
+            }
+
+            item.SetStatus("Connected", "Upload ok", true);
+            KawaiiStudio.App.App.Log("STARTUP_UPLOAD_OK");
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            item.SetStatus("Failed", "Timeout", false);
+            KawaiiStudio.App.App.Log("STARTUP_UPLOAD_TIMEOUT");
+            return false;
+        }
+        catch
+        {
+            item.SetStatus("Failed", "Upload error", false);
+            KawaiiStudio.App.App.Log("STARTUP_UPLOAD_FAILED");
+            return false;
+        }
+    }
+
     private void UpdateCanContinue(bool canContinue, bool hasErrors)
     {
         _canContinue = canContinue;
@@ -484,6 +845,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
     private void Continue()
     {
+        _autoContinueCts?.Cancel();
         _navigation.Navigate("home");
     }
 
@@ -494,6 +856,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return;
         }
 
+        _autoContinueCts?.Cancel();
         KawaiiStudio.App.App.Log("STARTUP_FORCE_CONTINUE");
         _navigation.Navigate("home");
     }
@@ -504,6 +867,38 @@ public sealed class StartupViewModel : ScreenViewModelBase
         _settings.Save();
         KawaiiStudio.App.App.Log("STARTUP_ENABLE_TEST_MODE");
         StartChecks();
+    }
+
+    private void ScheduleAutoContinue()
+    {
+        _autoContinueCts?.Cancel();
+        _autoContinueCts = new CancellationTokenSource();
+        _ = AutoContinueAsync(_autoContinueCts.Token);
+    }
+
+    private async Task AutoContinueAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(System.TimeSpan.FromSeconds(5), token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested || _isChecking || !_canContinue || _hasErrors)
+        {
+            return;
+        }
+
+        if (!string.Equals(_navigation.CurrentKey, "startup", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        KawaiiStudio.App.App.Log("STARTUP_AUTO_CONTINUE");
+        _navigation.Navigate("home");
     }
 
     private static async Task<(bool ok, bool timedOut)> RunCheckWithTimeout(
@@ -569,6 +964,7 @@ public sealed class StartupCheckItem : ViewModelBase
         {
             _status = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -589,6 +985,25 @@ public sealed class StartupCheckItem : ViewModelBase
         {
             _isOk = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(State));
+        }
+    }
+
+    public StartupCheckState State
+    {
+        get
+        {
+            if (string.Equals(Status, "Pending", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return StartupCheckState.Pending;
+            }
+
+            if (Status.StartsWith("Checking", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return StartupCheckState.Testing;
+            }
+
+            return IsOk ? StartupCheckState.Success : StartupCheckState.Error;
         }
     }
 
@@ -598,4 +1013,12 @@ public sealed class StartupCheckItem : ViewModelBase
         Detail = detail;
         IsOk = isOk;
     }
+}
+
+public enum StartupCheckState
+{
+    Pending,
+    Testing,
+    Success,
+    Error
 }
