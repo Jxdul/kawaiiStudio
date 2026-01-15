@@ -393,18 +393,20 @@ public sealed class StripeTerminalCardPaymentProvider : ICardPaymentProvider, IS
     private void HandleApproved()
     {
         var amount = _pendingAmount;
+        var paymentIntentId = _paymentIntentId;
         _pendingAmount = 0m;
         _paymentIntentId = null;
         _inProgress = false;
-        PaymentApproved?.Invoke(this, new CardPaymentEventArgs(amount));
+        PaymentApproved?.Invoke(this, new CardPaymentEventArgs(amount, null, paymentIntentId));
     }
 
     private void HandleDeclined(string? message)
     {
         var amount = _pendingAmount;
+        var paymentIntentId = _paymentIntentId;
         _pendingAmount = 0m;
         _paymentIntentId = null;
         _inProgress = false;
-        PaymentDeclined?.Invoke(this, new CardPaymentEventArgs(amount, message));
+        PaymentDeclined?.Invoke(this, new CardPaymentEventArgs(amount, message, paymentIntentId));
     }
 }

@@ -57,7 +57,7 @@ public sealed class SimulatedCardPaymentProvider : ICardPaymentProvider
         var amount = _pendingAmount;
         _pendingAmount = 0m;
         _inProgress = false;
-        PaymentApproved?.Invoke(this, new CardPaymentEventArgs(amount));
+        PaymentApproved?.Invoke(this, new CardPaymentEventArgs(amount, null, null));
     }
 
     public void SimulateDecline(string? message = null)
@@ -70,6 +70,6 @@ public sealed class SimulatedCardPaymentProvider : ICardPaymentProvider
         var amount = _pendingAmount;
         _pendingAmount = 0m;
         _inProgress = false;
-        PaymentDeclined?.Invoke(this, new CardPaymentEventArgs(amount, message));
+        PaymentDeclined?.Invoke(this, new CardPaymentEventArgs(amount, message, null));
     }
 }

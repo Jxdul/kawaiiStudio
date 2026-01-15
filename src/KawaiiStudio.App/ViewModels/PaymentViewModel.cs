@@ -491,7 +491,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             CardStatusText = "Card approved.";
             KawaiiStudio.App.App.Log($"CARD_PAYMENT_APPROVED amount={e.Amount:0.00}");
             RecordCashPayment(GetCashAmountToRecord());
-            RecordCardPayment(e.Amount);
+            RecordCardPayment(e.Amount, e.PaymentIntentId);
             MarkPaid();
         });
     }
@@ -715,7 +715,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             cancellationToken: CancellationToken.None);
     }
 
-    private void RecordCardPayment(decimal amount)
+    private void RecordCardPayment(decimal amount, string? paymentIntentId = null)
     {
         if (_settings.TestMode || _cardTransactionLogged || amount <= 0m)
         {
@@ -727,6 +727,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             _session.Current,
             "card",
             amount,
+            stripePaymentIntentId: paymentIntentId,
             cancellationToken: CancellationToken.None);
     }
 
