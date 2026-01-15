@@ -1,8 +1,17 @@
 <UserControl x:Class="KawaiiStudio.App.Views.StartupView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:KawaiiStudio.App.ViewModels"
-             Background="#F6F2EA">
+             xmlns:vm="clr-namespace:KawaiiStudio.App.ViewModels">
+  <UserControl.Style>
+    <Style TargetType="UserControl">
+      <Setter Property="Background" Value="#F6F2EA" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsTestMode}" Value="True">
+          <Setter Property="Background" Value="#3B82F6" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </UserControl.Style>
   <UserControl.Resources>
     <Style x:Key="StartupTileBorderStyle" TargetType="Border">
       <Setter Property="Background" Value="#EEE7DD" />
@@ -33,7 +42,18 @@
     <Image Source="{Binding BackgroundPath, Converter={StaticResource FilePathToImage}}"
            Stretch="UniformToFill"
            Opacity="0.9" />
-    <Rectangle Fill="#CCF6F2EA" />
+    <Rectangle>
+      <Rectangle.Style>
+        <Style TargetType="Rectangle">
+          <Setter Property="Fill" Value="#CCF6F2EA" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding IsTestMode}" Value="True">
+              <Setter Property="Fill" Value="#CC3B82F6" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Rectangle.Style>
+    </Rectangle>
     <Grid Margin="24">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />

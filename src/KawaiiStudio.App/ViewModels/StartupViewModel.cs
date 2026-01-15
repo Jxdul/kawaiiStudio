@@ -79,6 +79,8 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
     public bool CanForceContinue => !_isChecking && _hasErrors;
 
+    public bool IsTestMode => _settings.TestMode;
+
     public string ModeText
     {
         get => _modeText;
@@ -116,6 +118,7 @@ public sealed class StartupViewModel : ScreenViewModelBase
         _settings.Reload();
         var testMode = _settings.TestMode;
         ModeText = testMode ? "Test Mode: On" : "Test Mode: Off";
+        OnPropertyChanged(nameof(IsTestMode));
 
         _ = RunChecksAsync(testMode, token);
     }
@@ -186,15 +189,12 @@ public sealed class StartupViewModel : ScreenViewModelBase
             && boothRegistrationOk
             && uploadOk;
         UpdateCanContinue(allOk, !allOk);
-        if (allOk)
-        {
-            _boothRegistration.StartHeartbeatTimer();
-            ScheduleAutoContinue();
-        }
-        else
-        {
-            _autoContinueCts?.Cancel();
-        }
+        
+        // Note: Heartbeat timer is now started immediately after successful registration
+        // in CheckBoothRegistrationAsync, so it runs even if other checks fail
+        
+        // Cancel any pending auto-continue (removed auto-continue feature)
+        _autoContinueCts?.Cancel();
 
         _isChecking = false;
         _retryCommand.RaiseCanExecuteChanged();
@@ -626,9 +626,67 @@ public sealed class StartupViewModel : ScreenViewModelBase
         {
             var queue = new PrintQueue(new PrintServer(), printerName);
             queue.Refresh();
+            
+            // Check if printer is offline
             if (queue.IsOffline)
             {
                 details.Add($"{label}: offline");
+                return false;
+            }
+
+            // Check queue status for error conditions
+            var status = queue.QueueStatus;
+            var errorFlags = PrintQueueStatus.Offline
+                | PrintQueueStatus.Error
+                | PrintQueueStatus.NotAvailable
+                | PrintQueueStatus.PaperOut
+                | PrintQueueStatus.PaperProblem
+                | PrintQueueStatus.DoorOpen
+                | PrintQueueStatus.ManualFeed
+                | PrintQueueStatus.PaperJam
+                | PrintQueueStatus.OutputBinFull
+                | PrintQueueStatus.Paused
+                | PrintQueueStatus.TonerLow
+                | PrintQueueStatus.NoToner
+                | PrintQueueStatus.UserIntervention;
+
+            if ((status & errorFlags) != PrintQueueStatus.None)
+            {
+                var statusMessages = new List<string>();
+                if ((status & PrintQueueStatus.Offline) != PrintQueueStatus.None)
+                    statusMessages.Add("offline");
+                if ((status & PrintQueueStatus.Error) != PrintQueueStatus.None)
+                    statusMessages.Add("error");
+                if ((status & PrintQueueStatus.NotAvailable) != PrintQueueStatus.None)
+                    statusMessages.Add("not available");
+                if ((status & PrintQueueStatus.PaperOut) != PrintQueueStatus.None)
+                    statusMessages.Add("paper out");
+                if ((status & PrintQueueStatus.PaperProblem) != PrintQueueStatus.None)
+                    statusMessages.Add("paper problem");
+                if ((status & PrintQueueStatus.DoorOpen) != PrintQueueStatus.None)
+                    statusMessages.Add("door open");
+                if ((status & PrintQueueStatus.PaperJam) != PrintQueueStatus.None)
+                    statusMessages.Add("paper jam");
+                if ((status & PrintQueueStatus.ManualFeed) != PrintQueueStatus.None)
+                    statusMessages.Add("manual feed required");
+                if ((status & PrintQueueStatus.UserIntervention) != PrintQueueStatus.None)
+                    statusMessages.Add("needs attention");
+
+                var statusText = statusMessages.Count > 0 
+                    ? string.Join(", ", statusMessages) 
+                    : "unavailable";
+                details.Add($"{label}: {statusText}");
+                return false;
+            }
+
+            // Try to access the queue to verify it's actually accessible
+            try
+            {
+                _ = queue.DefaultPrintTicket;
+            }
+            catch
+            {
+                details.Add($"{label}: cannot access");
                 return false;
             }
 
@@ -782,13 +840,6 @@ public sealed class StartupViewModel : ScreenViewModelBase
             return false;
         }
 
-        if (_settings.TestMode)
-        {
-            item.SetStatus("Skipped", "Test mode", true);
-            KawaiiStudio.App.App.Log("STARTUP_BOOTH_REGISTRATION_SKIPPED reason=test_mode");
-            return true;
-        }
-
         var boothId = _settings.BoothId?.Trim();
         if (string.IsNullOrWhiteSpace(boothId))
         {
@@ -849,6 +900,11 @@ public sealed class StartupViewModel : ScreenViewModelBase
 
         item.SetStatus("Registered", $"Booth: {boothId}", true);
         KawaiiStudio.App.App.Log($"STARTUP_BOOTH_REGISTRATION_OK boothId={boothId}");
+        
+        // Start heartbeat timer immediately after successful registration
+        // This ensures heartbeats are sent even if other checks fail
+        _boothRegistration.StartHeartbeatTimer();
+        
         return true;
     }
 
@@ -956,40 +1012,10 @@ public sealed class StartupViewModel : ScreenViewModelBase
         _settings.SetValue("TEST_MODE", "true");
         _settings.Save();
         KawaiiStudio.App.App.Log("STARTUP_ENABLE_TEST_MODE");
+        OnPropertyChanged(nameof(IsTestMode));
         StartChecks();
     }
 
-    private void ScheduleAutoContinue()
-    {
-        _autoContinueCts?.Cancel();
-        _autoContinueCts = new CancellationTokenSource();
-        _ = AutoContinueAsync(_autoContinueCts.Token);
-    }
-
-    private async Task AutoContinueAsync(CancellationToken token)
-    {
-        try
-        {
-            await Task.Delay(System.TimeSpan.FromSeconds(5), token);
-        }
-        catch (TaskCanceledException)
-        {
-            return;
-        }
-
-        if (token.IsCancellationRequested || _isChecking || !_canContinue || _hasErrors)
-        {
-            return;
-        }
-
-        if (!string.Equals(_navigation.CurrentKey, "startup", System.StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        KawaiiStudio.App.App.Log("STARTUP_AUTO_CONTINUE");
-        _navigation.Navigate("home");
-    }
 
     private static async Task<(bool ok, bool timedOut)> RunCheckWithTimeout(
         Func<CancellationToken, Task<bool>> action,

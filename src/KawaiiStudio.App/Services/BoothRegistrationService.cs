@@ -17,7 +17,7 @@ public sealed class BoothRegistrationService
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(30);
     private readonly SettingsService _settings;
     private readonly HttpClient _httpClient;
-    private DispatcherTimer? _heartbeatTimer;
+    private Timer? _heartbeatTimer;
     private bool _isRegistered;
     private DateTime _lastHeartbeatTime;
     private PerformanceCounter? _cpuCounter;
@@ -40,12 +40,6 @@ public sealed class BoothRegistrationService
         string? location = null,
         CancellationToken cancellationToken = default)
     {
-        if (_settings.TestMode)
-        {
-            App.Log("BOOTH_REGISTRATION_SKIPPED reason=test_mode");
-            return (true, null);
-        }
-
         var baseUrl = ResolveBaseUrl();
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
@@ -180,11 +174,6 @@ public sealed class BoothRegistrationService
     public async Task<(bool ok, bool isAllowed, string? error)> CheckBoothAllowedAsync(
         CancellationToken cancellationToken = default)
     {
-        if (_settings.TestMode)
-        {
-            return (true, true, null);
-        }
-
         var baseUrl = ResolveBaseUrl();
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
@@ -246,20 +235,32 @@ public sealed class BoothRegistrationService
             return;
         }
 
-        var dispatcher = System.Windows.Application.Current?.Dispatcher;
-        if (dispatcher == null)
-        {
-            App.Log("BOOTH_HEARTBEAT_TIMER_FAILED reason=no_dispatcher");
-            return;
-        }
+        // Send an immediate heartbeat to ensure the server knows the booth is online
+        // right after registration, before starting the periodic timer
+        _ = SendImmediateHeartbeatAsync();
 
-        _heartbeatTimer = new DispatcherTimer
-        {
-            Interval = HeartbeatInterval
-        };
-        _heartbeatTimer.Tick += async (sender, e) => await OnHeartbeatTimerTick();
-        _heartbeatTimer.Start();
+        // Use System.Threading.Timer instead of DispatcherTimer to ensure
+        // heartbeats continue even when the app is idle or UI thread is blocked
+        // Start with zero delay so the first heartbeat is sent immediately,
+        // then continue every HeartbeatInterval
+        _heartbeatTimer = new Timer(
+            OnHeartbeatTimerTick,
+            null,
+            TimeSpan.Zero,
+            HeartbeatInterval);
         App.Log("BOOTH_HEARTBEAT_TIMER_STARTED");
+    }
+
+    private async Task SendImmediateHeartbeatAsync()
+    {
+        try
+        {
+            await SendHeartbeatAsync(includeMetrics: true, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            App.Log($"BOOTH_HEARTBEAT_IMMEDIATE_ERROR error={ex.GetType().Name}");
+        }
     }
 
     public void StopHeartbeatTimer()
@@ -269,14 +270,21 @@ public sealed class BoothRegistrationService
             return;
         }
 
-        _heartbeatTimer.Stop();
+        _heartbeatTimer.Dispose();
         _heartbeatTimer = null;
         App.Log("BOOTH_HEARTBEAT_TIMER_STOPPED");
     }
 
-    private async void OnHeartbeatTimerTick()
+    private async void OnHeartbeatTimerTick(object? state)
     {
-        await SendHeartbeatAsync(includeMetrics: true, CancellationToken.None);
+        try
+        {
+            await SendHeartbeatAsync(includeMetrics: true, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            App.Log($"BOOTH_HEARTBEAT_TIMER_ERROR error={ex.GetType().Name}");
+        }
     }
 
     private string ResolveBaseUrl()
