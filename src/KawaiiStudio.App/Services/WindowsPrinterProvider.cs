@@ -78,7 +78,7 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
             return (false, null, "print_ticket_missing");
         }
 
-        // Extract page dimensions from the ticket for document building
+        // Use print ticket dimensions - driver knows the correct printable area
         var pageWidth = ticket.PageMediaSize?.Width ?? DefaultPageWidth;
         var pageHeight = ticket.PageMediaSize?.Height ?? DefaultPageHeight;
 
@@ -87,7 +87,7 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
         writer.Write(document.DocumentPaginator, ticket);
 
         var jobId = $"print_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{size}";
-        KawaiiStudio.App.App.Log($"PRINT_SENT queue={queue.Name} copies={copyCount} size={size} job={jobId}");
+        KawaiiStudio.App.App.Log($"PRINT_SENT queue={queue.Name} copies={copyCount} size={size} job={jobId} imageSize={pageWidth}x{pageHeight}");
         return (true, jobId, null);
     }
 
@@ -150,15 +150,17 @@ public sealed class WindowsPrinterProvider : IPrinterProvider
                 Height = pageHeight
             };
 
+            // Fill the entire page with the image - let driver handle final adjustments
             var imageElement = new Image
             {
                 Source = image,
                 Width = pageWidth,
                 Height = pageHeight,
-                Stretch = Stretch.Uniform
+                Stretch = Stretch.Fill  // Fill entire page area
             };
             RenderOptions.SetBitmapScalingMode(imageElement, BitmapScalingMode.HighQuality);
 
+            // Position at top-left to fill entire printable area
             FixedPage.SetLeft(imageElement, 0);
             FixedPage.SetTop(imageElement, 0);
             page.Children.Add(imageElement);
