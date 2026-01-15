@@ -16,6 +16,7 @@ Kiosk-style photobooth app for Windows with a complete customer flow and frame-d
 - Camera error screen when camera fails (unless test mode enabled)
 - Worker/server health check on startup
 - Test mode support (simulated camera, cash reader, and card payment)
+- **Test Mode Transactions** - Transactions and sessions are now recorded in test mode for testing analytics
 - Staff settings screen for configuring:
   - Pricing (per size and quantity pairs)
   - Timeouts (per screen)
@@ -81,6 +82,7 @@ Kiosk-style photobooth app for Windows with a complete customer flow and frame-d
 - **Analytics Dashboard** - View revenue and session metrics in admin dashboard
 - **Time Period Analysis** - Server supports filtering by day, week, month, quarter, year
 - **Interactive Charts** - Revenue and session trends visualized in admin dashboard
+- **Test Mode Support** - Transactions and sessions are recorded in test mode for testing analytics
 
 ### Output & Storage
 - Local session storage:
@@ -203,7 +205,7 @@ The app reads configuration from `Config/appconfig.ini`. Key settings:
 - `TIMEOUT_DEFAULT` - Default timeout fallback
 
 **Other:**
-- `TEST_MODE` - Enable test mode (simulated devices)
+- `TEST_MODE` - Enable test mode (simulated devices, transactions still recorded)
 - `MAX_QUANTITY` - Maximum print quantity
 - `CAMERA_TIMER_SECONDS` - Countdown timer for capture
 
@@ -213,6 +215,7 @@ The app reads configuration from `Config/appconfig.ini`. Key settings:
 - Camera focus failures currently prevent a capture; it should still take the photo even if autofocus misses
 - Upload service requires `UPLOAD_ENABLED=true` and `UPLOAD_BASE_URL` configured
 - Video compilation requires ffmpeg installed (checks `C:\Program Files\ffmpeg\bin\ffmpeg.exe`, `third_party/ffmpeg*/bin/ffmpeg.exe`, or PATH)
+- **Test Mode**: When `TEST_MODE=true`, transactions and sessions are still recorded to the server for testing analytics. This allows you to test the full analytics pipeline without processing real payments.
 - See `specifications.txt` for the full functional spec and acceptance criteria
 
 ## Remaining Work
