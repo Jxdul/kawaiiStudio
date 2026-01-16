@@ -197,7 +197,8 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         if (result.ok && !string.IsNullOrWhiteSpace(result.url))
         {
             _session.SetQrUrl(result.url);
-            KawaiiStudio.App.App.Log("UPLOAD_OK");
+            KawaiiStudio.App.App.Log($"UPLOAD_OK url={result.url}");
+            KawaiiStudio.App.App.Log($"QR_URL={result.url}");
             return true;
         }
 

@@ -7,6 +7,10 @@
   <Application.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     <conv:FilePathToImageSourceConverter x:Key="FilePathToImage" />
+    <conv:UsageToColorConverter x:Key="UsageToColor" />
+    <conv:BoolToStatusConverter x:Key="BoolToStatus" />
+    <conv:BoolToStatusColorConverter x:Key="BoolToStatusColor" />
+    <conv:BoolToYesNoConverter x:Key="BoolToYesNo" />
 
     <Style TargetType="Window">
       <Setter Property="TextElement.Foreground" Value="#2B2620" />

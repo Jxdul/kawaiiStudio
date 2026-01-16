@@ -1,0 +1,97 @@
+<UserControl x:Class="KawaiiStudio.App.Views.SessionHistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#F6F2EA">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+      <TextBlock Text="{Binding StatusMessage}" FontSize="14" Foreground="#8A8A8A" VerticalAlignment="Center" Margin="0,0,16,0" />
+      <Button Content="Refresh" Command="{Binding RefreshCommand}" Padding="16,8" />
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Sessions}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="3" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Background="#EEE7DD" 
+                    CornerRadius="10" 
+                    Padding="16" 
+                    Margin="8"
+                    BorderBrush="#D6CDC2"
+                    BorderThickness="1">
+              <StackPanel>
+                <Image Source="{Binding FinalImagePath, Converter={StaticResource FilePathToImage}}"
+                       Height="200"
+                       Stretch="Uniform"
+                       Margin="0,0,0,8"
+                       HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding SessionId}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding DisplayDate}" FontSize="12" Foreground="#8A8A8A" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding DisplaySize}" FontSize="12" Foreground="#8A8A8A" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding DisplayPayment}" FontSize="12" Foreground="#8A8A8A" Margin="0,0,0,12" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                  <Button Content="Reprint" 
+                         Command="{Binding DataContext.ReprintCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                         CommandParameter="{Binding}"
+                         Padding="12,8"
+                         Margin="0,0,8,0"
+                         IsEnabled="{Binding HasFinalImage}" />
+                  <Button Content="View QR" 
+                         Command="{Binding DataContext.ViewQrCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                         CommandParameter="{Binding}"
+                         Padding="12,8"
+                         IsEnabled="{Binding HasQrUrl}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <!-- QR Code Dialog -->
+    <Grid Grid.RowSpan="2"
+          Background="#80000000"
+          Visibility="{Binding IsQrDialogVisible, Converter={StaticResource BoolToVisibility}}">
+      <Button Command="{Binding CloseQrDialogCommand}"
+              Background="Transparent"
+              BorderThickness="0" />
+      <Border Background="#EEE7DD"
+              CornerRadius="12"
+              Padding="24"
+              Width="500"
+              Panel.ZIndex="1"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel>
+          <TextBlock Text="QR Code" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16" />
+          <Image Source="{Binding QrCodeImage}"
+                 Width="300"
+                 Height="300"
+                 Stretch="Uniform"
+                 HorizontalAlignment="Center"
+                 Margin="0,0,0,16" />
+          <TextBlock Text="{Binding QrCodeUrl}" 
+                    FontSize="12" 
+                    Foreground="#8A8A8A"
+                    TextWrapping="Wrap"
+                    Margin="0,0,0,16"
+                    TextAlignment="Center" />
+          <Button Content="Close" 
+                 Command="{Binding CloseQrDialogCommand}" 
+                 Padding="16,8"
+                 HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

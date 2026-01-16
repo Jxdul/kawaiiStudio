@@ -14,12 +14,20 @@ public sealed class StaffViewModel : ScreenViewModelBase
     private const string SectionHardware = "hardware";
     private const string SectionTimeouts = "timeouts";
     private const string SectionTemplates = "templates";
+    private const string SectionDiagnostics = "diagnostics";
+    private const string SectionSessionHistory = "session_history";
 
     private readonly NavigationService _navigation;
     private readonly SettingsService _settings;
     private readonly CameraService _camera;
     private readonly CashAcceptorService _cashAcceptor;
     private readonly ICardPaymentProvider _cardPayment;
+    private readonly SessionService _session;
+    private readonly AppPaths _appPaths;
+    private readonly PrinterService _printerService;
+    private readonly QrCodeService _qrCodeService;
+    private DiagnosticsViewModel? _diagnosticsViewModel;
+    private SessionHistoryViewModel? _sessionHistoryViewModel;
     private readonly RelayCommand _confirmEntryCommand;
     private readonly RelayCommand _cancelEntryCommand;
     private string _maxQuantity = string.Empty;
@@ -43,7 +51,11 @@ public sealed class StaffViewModel : ScreenViewModelBase
         SettingsService settings,
         CameraService camera,
         CashAcceptorService cashAcceptor,
-        ICardPaymentProvider cardPayment)
+        ICardPaymentProvider cardPayment,
+        SessionService session,
+        AppPaths appPaths,
+        PrinterService printerService,
+        QrCodeService qrCodeService)
         : base(themeCatalog, "staff")
     {
         _navigation = navigation;
@@ -51,6 +63,10 @@ public sealed class StaffViewModel : ScreenViewModelBase
         _camera = camera;
         _cashAcceptor = cashAcceptor;
         _cardPayment = cardPayment;
+        _session = session;
+        _appPaths = appPaths;
+        _printerService = printerService;
+        _qrCodeService = qrCodeService;
 
         SaveCommand = new RelayCommand(Save);
         ReloadCommand = new RelayCommand(ReloadApp);
@@ -71,6 +87,32 @@ public sealed class StaffViewModel : ScreenViewModelBase
 
     public ObservableCollection<StaffSettingEntry> PricingEntries { get; } = new();
     public ObservableCollection<StaffSettingEntry> TimeoutEntries { get; } = new();
+
+    public DiagnosticsViewModel DiagnosticsViewModel
+    {
+        get
+        {
+            if (_diagnosticsViewModel == null)
+            {
+                _diagnosticsViewModel = new DiagnosticsViewModel(_settings, _session, _camera, _cashAcceptor, _cardPayment, _appPaths);
+            }
+
+            return _diagnosticsViewModel;
+        }
+    }
+
+    public SessionHistoryViewModel SessionHistoryViewModel
+    {
+        get
+        {
+            if (_sessionHistoryViewModel == null)
+            {
+                _sessionHistoryViewModel = new SessionHistoryViewModel(_appPaths, _printerService, _qrCodeService, _settings);
+            }
+
+            return _sessionHistoryViewModel;
+        }
+    }
 
     public ICommand SaveCommand { get; }
     public ICommand ReloadCommand { get; }
@@ -216,7 +258,17 @@ public sealed class StaffViewModel : ScreenViewModelBase
             OnPropertyChanged(nameof(IsHardwareVisible));
             OnPropertyChanged(nameof(IsTimeoutsVisible));
             OnPropertyChanged(nameof(IsTemplatesVisible));
+            OnPropertyChanged(nameof(IsDiagnosticsVisible));
             OnPropertyChanged(nameof(ActiveSectionTitle));
+            
+            if (IsDiagnosticsVisible)
+            {
+                DiagnosticsViewModel.StartPolling();
+            }
+            else
+            {
+                DiagnosticsViewModel.StopPolling();
+            }
         }
     }
 
@@ -227,6 +279,8 @@ public sealed class StaffViewModel : ScreenViewModelBase
     public bool IsHardwareVisible => string.Equals(_activeSection, SectionHardware, System.StringComparison.OrdinalIgnoreCase);
     public bool IsTimeoutsVisible => string.Equals(_activeSection, SectionTimeouts, System.StringComparison.OrdinalIgnoreCase);
     public bool IsTemplatesVisible => string.Equals(_activeSection, SectionTemplates, System.StringComparison.OrdinalIgnoreCase);
+    public bool IsDiagnosticsVisible => string.Equals(_activeSection, SectionDiagnostics, System.StringComparison.OrdinalIgnoreCase);
+    public bool IsSessionHistoryVisible => string.Equals(_activeSection, SectionSessionHistory, System.StringComparison.OrdinalIgnoreCase);
 
     public string ActiveSectionTitle
     {
@@ -255,6 +309,16 @@ public sealed class StaffViewModel : ScreenViewModelBase
             if (IsTemplatesVisible)
             {
                 return "Templates";
+            }
+
+            if (IsDiagnosticsVisible)
+            {
+                return "Diagnostics";
+            }
+
+            if (IsSessionHistoryVisible)
+            {
+                return "Session History";
             }
 
             return "Staff Menu";
@@ -291,6 +355,7 @@ public sealed class StaffViewModel : ScreenViewModelBase
         base.OnNavigatedTo();
         LoadFromSettings();
         BackToMenu();
+        DiagnosticsViewModel.StopPolling();
         KawaiiStudio.App.App.Log("STAFF_ACCESS");
     }
 
