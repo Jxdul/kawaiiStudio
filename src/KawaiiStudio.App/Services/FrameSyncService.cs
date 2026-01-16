@@ -70,6 +70,7 @@ public sealed class FrameSyncService
             }
 
             // Delete local frames not on server
+            // Note: We preserve .layout.json override files even when frames are deleted
             var deletedCount = 0;
             foreach (var (key, localPath) in localFrameMap)
             {
@@ -82,6 +83,8 @@ public sealed class FrameSyncService
                             File.Delete(localPath);
                             deletedCount++;
                             App.Log($"FRAME_SYNC_DELETE key={key}");
+                            // Layout.json override files are preserved automatically
+                            // since they have a different filename (.layout.json vs .png)
                         }
                     }
                     catch (Exception ex)
@@ -268,6 +271,13 @@ public sealed class FrameSyncService
 
             Directory.CreateDirectory(directory);
 
+            // Check if .layout.json override file exists and preserve it
+            // The override file uses the pattern: {frameName}.layout.json
+            var frameNameWithoutExt = Path.GetFileNameWithoutExtension(localPath);
+            var overrideFileName = $"{frameNameWithoutExt}.layout.json";
+            var overridePath = Path.Combine(directory, overrideFileName);
+            var hasExistingOverride = File.Exists(overridePath);
+
             // Download frame from server
             var url = $"{baseUrl}/api/frames/download?key={Uri.EscapeDataString(key)}";
             using var response = await _httpClient.GetAsync(url, cancellationToken);
@@ -277,9 +287,15 @@ public sealed class FrameSyncService
                 return (false, $"http_error_{(int)response.StatusCode}");
             }
 
-            // Save to file
+            // Save to file (this will overwrite if frame exists)
             await using var fileStream = File.Create(localPath);
             await response.Content.CopyToAsync(fileStream, cancellationToken);
+
+            // Verify override file still exists after download (it should, but just to be safe)
+            if (hasExistingOverride && File.Exists(overridePath))
+            {
+                App.Log($"FRAME_SYNC_PRESERVED_OVERRIDE key={key} override={overrideFileName}");
+            }
 
             return (true, null);
         }

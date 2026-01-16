@@ -205,6 +205,141 @@
           "lib/netcoreapp2.1/_._": {}
         }
       }
+    },
+    "net8.0-windows7.0/win-x64": {
+      "Microsoft.Win32.SystemEvents/6.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/Microsoft.Win32.SystemEvents.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "runtimes/win/lib/net6.0/Microsoft.Win32.SystemEvents.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/netcoreapp3.1/_._": {}
+        }
+      },
+      "OpenCvSharp4/4.11.0.20250507": {
+        "type": "package",
+        "dependencies": {
+          "System.Memory": "4.6.3"
+        },
+        "compile": {
+          "lib/net6.0/OpenCvSharp.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/OpenCvSharp.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "OpenCvSharp4.runtime.win/4.11.0.20250507": {
+        "type": "package",
+        "native": {
+          "runtimes/win-x64/native/OpenCvSharpExtern.dll": {},
+          "runtimes/win-x64/native/opencv_videoio_ffmpeg4110_64.dll": {}
+        },
+        "build": {
+          "build/net5.0/OpenCvSharp4.runtime.win.props": {}
+        }
+      },
+      "OpenCvSharp4.Windows/4.11.0.20250507": {
+        "type": "package",
+        "dependencies": {
+          "OpenCvSharp4": "4.11.0.20250507",
+          "OpenCvSharp4.runtime.win": "4.11.0.20250507"
+        }
+      },
+      "QRCoder/1.4.3": {
+        "type": "package",
+        "dependencies": {
+          "System.Drawing.Common": "6.0.0"
+        },
+        "compile": {
+          "lib/net6.0-windows7.0/QRCoder.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0-windows7.0/QRCoder.dll": {}
+        }
+      },
+      "runtime.linux-arm.runtime.native.System.IO.Ports/8.0.0": {
+        "type": "package"
+      },
+      "runtime.linux-arm64.runtime.native.System.IO.Ports/8.0.0": {
+        "type": "package"
+      },
+      "runtime.linux-x64.runtime.native.System.IO.Ports/8.0.0": {
+        "type": "package"
+      },
+      "runtime.native.System.IO.Ports/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "runtime.linux-arm.runtime.native.System.IO.Ports": "8.0.0",
+          "runtime.linux-arm64.runtime.native.System.IO.Ports": "8.0.0",
+          "runtime.linux-x64.runtime.native.System.IO.Ports": "8.0.0",
+          "runtime.osx-arm64.runtime.native.System.IO.Ports": "8.0.0",
+          "runtime.osx-x64.runtime.native.System.IO.Ports": "8.0.0"
+        }
+      },
+      "runtime.osx-arm64.runtime.native.System.IO.Ports/8.0.0": {
+        "type": "package"
+      },
+      "runtime.osx-x64.runtime.native.System.IO.Ports/8.0.0": {
+        "type": "package"
+      },
+      "System.Drawing.Common/6.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Win32.SystemEvents": "6.0.0"
+        },
+        "compile": {
+          "lib/net6.0/System.Drawing.Common.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "runtimes/win/lib/net6.0/System.Drawing.Common.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/netcoreapp3.1/_._": {}
+        }
+      },
+      "System.IO.Ports/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "runtime.native.System.IO.Ports": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/System.IO.Ports.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "runtimes/win/lib/net8.0/System.IO.Ports.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
+      "System.Memory/4.6.3": {
+        "type": "package",
+        "compile": {
+          "lib/netcoreapp2.1/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.1/_._": {}
+        }
+      }
     }
   },
   "libraries": {
@@ -588,6 +723,20 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+            "version": "[8.0.22, 8.0.22]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Runtime.win-x64",
+            "version": "[8.0.22, 8.0.22]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+            "version": "[8.0.22, 8.0.22]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
@@ -597,6 +746,11 @@
           }
         },
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json"
+      }
+    },
+    "runtimes": {
+      "win-x64": {
+        "#import": []
       }
     }
   }

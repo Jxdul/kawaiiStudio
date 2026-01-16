@@ -13,9 +13,44 @@
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,16">
-        <Button Content="Back" Command="{Binding BackCommand}" />
-        <TextBlock Text="{Binding CategoryName, StringFormat=Frames - {0}}" FontSize="28" FontWeight="SemiBold" Margin="16,0,0,0" />
+      <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,24">
+        <Button Content="Back" 
+                Command="{Binding BackCommand}"
+                Padding="32,16"
+                FontSize="24"
+                Background="#E7DFD6"
+                Foreground="#333333"
+                BorderThickness="0"
+                FontWeight="SemiBold"
+                Cursor="Hand">
+          <Button.Effect>
+            <DropShadowEffect Color="#20000000" BlurRadius="6" ShadowDepth="3" />
+          </Button.Effect>
+          <Button.Style>
+            <Style TargetType="Button">
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+              <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter Property="Background" Value="#DDD5CC" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter Property="Background" Value="#CCC4BB" />
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </Button.Style>
+        </Button>
+        <TextBlock Text="{Binding CategoryName, StringFormat=Frames - {0}}" FontSize="40" FontWeight="SemiBold" Margin="24,0,0,0" />
       </DockPanel>
 
       <Grid Grid.Row="1">
@@ -32,32 +67,149 @@
           </TextBlock.Style>
         </TextBlock>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <ItemsControl ItemsSource="{Binding Frames}">
+        <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+
+          <!-- Left Arrow -->
+          <Button Grid.Column="0" 
+                  Command="{Binding PreviousPageCommand}"
+                  Content="←"
+                  FontSize="64"
+                  FontWeight="Bold"
+                  Foreground="#333333"
+                  Background="#EEE7DD"
+                  BorderThickness="0"
+                  Padding="30,60"
+                  Margin="0,0,48,0"
+                  Cursor="Hand"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  MinWidth="120"
+                  MinHeight="180"
+                  Opacity="0.7">
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="12"
+                              Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.3" />
+                  </Trigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5EEDD" />
+                    <Setter Property="Opacity" Value="1.0" />
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+
+          <!-- Three Frames -->
+          <ItemsControl Grid.Column="1" 
+                       ItemsSource="{Binding VisibleFrames}"
+                       HorizontalAlignment="Center">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
-                <WrapPanel ItemWidth="180" ItemHeight="260" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Button Command="{Binding DataContext.SelectFrameCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                         CommandParameter="{Binding}"
-                        Margin="0,0,12,12"
-                        Padding="0">
-                  <Border Background="#EEE7DD" CornerRadius="10" Padding="12">
-                    <StackPanel>
-                      <Border Background="#E7DFD6" CornerRadius="6" Height="170" Margin="0,0,0,8">
-                        <Image Source="{Binding FilePath, Converter={StaticResource FilePathToImage}}" Stretch="Uniform" />
-                      </Border>
-                      <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" />
-                    </StackPanel>
-                  </Border>
+                        Margin="24"
+                        Padding="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Opacity="1.0">
+                  <Button.Style>
+                    <Style TargetType="Button">
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="16"
+                                    Padding="{TemplateBinding Padding}">
+                              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                    </Style>
+                  </Button.Style>
+                  <Image Source="{Binding FilePath, Converter={StaticResource FilePathToImage}}" 
+                         Stretch="Uniform"
+                         Opacity="1.0"
+                         MaxWidth="600"
+                         MaxHeight="900" />
                 </Button>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-        </ScrollViewer>
+
+          <!-- Right Arrow -->
+          <Button Grid.Column="2" 
+                  Command="{Binding NextPageCommand}"
+                  Content="→"
+                  FontSize="64"
+                  FontWeight="Bold"
+                  Foreground="#333333"
+                  Background="#EEE7DD"
+                  BorderThickness="0"
+                  Padding="30,60"
+                  Margin="48,0,0,0"
+                  Cursor="Hand"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  MinWidth="120"
+                  MinHeight="180"
+                  Opacity="0.7">
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="12"
+                              Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.3" />
+                  </Trigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5EEDD" />
+                    <Setter Property="Opacity" Value="1.0" />
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+        </Grid>
       </Grid>
     </Grid>
   </Grid>

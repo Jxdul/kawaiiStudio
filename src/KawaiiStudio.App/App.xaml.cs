@@ -71,9 +71,9 @@ public partial class App : Application
         var errorViewModel = new ErrorViewModel();
         var startupViewModel = new StartupViewModel(navigation, settings, cameraService, cashAcceptor, errorViewModel, themeCatalog, boothRegistration, frameSync);
         var homeViewModel = new HomeViewModel(navigation, session, settings, themeCatalog);
-        var sizeViewModel = new SizeViewModel(navigation, session, themeCatalog, settings);
+        var sizeViewModel = new SizeViewModel(navigation, session, themeCatalog, settings, appPaths);
         var quantityViewModel = new QuantityViewModel(navigation, session, themeCatalog, settings);
-        var layoutViewModel = new LayoutViewModel(navigation, session, themeCatalog);
+        var layoutViewModel = new LayoutViewModel(navigation, session, themeCatalog, appPaths);
         var categoryViewModel = new CategoryViewModel(navigation, session, frameCatalog, themeCatalog);
         var frameViewModel = new FrameViewModel(navigation, session, themeCatalog);
         var paymentViewModel = new PaymentViewModel(navigation, session, themeCatalog, settings, financeTracking, cashAcceptor, cardPayment);

@@ -80,6 +80,8 @@ public sealed class ReviewViewModel : ScreenViewModelBase
     {
         base.OnNavigatedTo();
         KawaiiStudio.App.App.Log("REVIEW_START");
+        var frame = _session.Current.Frame;
+        KawaiiStudio.App.App.Log($"REVIEW_FRAME frame={(frame != null ? frame.Name : "null")} path={(frame?.FilePath ?? "null")}");
         LoadPhotos();
         UpdatePreview();
         UpdateStatus();
@@ -158,16 +160,35 @@ public sealed class ReviewViewModel : ScreenViewModelBase
 
     private void UpdatePreview()
     {
+        // Clear preview first to force UI update
+        var previousImage = PreviewImage;
+        PreviewImage = null;
+        
         var preview = _composer.RenderComposite(_session.Current, includeQr: false, out var error);
         if (preview is null)
         {
-            PreviewImage = null;
             _previewError = error ?? "Preview unavailable.";
+            KawaiiStudio.App.App.Log($"REVIEW_PREVIEW_ERROR: {_previewError}");
+            KawaiiStudio.App.App.Log($"REVIEW_SESSION_STATE: Size={_session.Current.Size}, Layout={_session.Current.Layout}, TemplateType={_session.Current.TemplateType}, Frame={(_session.Current.Frame != null ? _session.Current.Frame.Name : "null")}");
             return;
         }
 
         _previewError = null;
         PreviewImage = preview;
+        KawaiiStudio.App.App.Log($"REVIEW_PREVIEW_UPDATED slots={_slotCount}");
+        
+        // Dispose previous image if it's different to free memory
+        if (previousImage is not null && previousImage != preview && previousImage is IDisposable disposable)
+        {
+            try
+            {
+                disposable.Dispose();
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+        }
     }
 
     private void UpdateStatus()

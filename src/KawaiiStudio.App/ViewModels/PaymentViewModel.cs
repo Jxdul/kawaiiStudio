@@ -42,6 +42,12 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private readonly RelayCommand _simulateExpiredCardCommand;
     private readonly RelayCommand _simulateProcessingErrorCommand;
     private readonly RelayCommand _backCommand;
+    private readonly RelayCommand _toggleStaffMenuCommand;
+    private readonly RelayCommand<string> _staffPinInputCommand;
+    private readonly RelayCommand _staffPinBackspaceCommand;
+    private readonly RelayCommand _staffPinClearCommand;
+    private readonly RelayCommand _staffPinConfirmCommand;
+    private readonly RelayCommand _staffPinCancelCommand;
     private readonly Dispatcher? _dispatcher;
     private string _summaryText = string.Empty;
     private string _cashStatusText = string.Empty;
@@ -55,6 +61,13 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private bool _isCardTestMode;
     private bool _cashTransactionLogged;
     private bool _cardTransactionLogged;
+    private bool _isStaffMenuOpen;
+    private string _staffPin = string.Empty;
+    private string _pendingStaffPin = string.Empty;
+    private string _staffPinError = string.Empty;
+    private string? _cardDeclineReason;
+    private string? _framePreviewPath;
+    private string _quantityText = string.Empty;
 
     public PaymentViewModel(
         NavigationService navigation,
@@ -123,6 +136,18 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         _backCommand = new RelayCommand(() => _navigation.Navigate("frame"), () => !_session.Current.IsPaid);
         BackCommand = _backCommand;
         CancelCommand = new RelayCommand(Cancel, () => !_session.Current.IsPaid);
+        _toggleStaffMenuCommand = new RelayCommand(ToggleStaffMenu);
+        _staffPinInputCommand = new RelayCommand<string>(StaffPinInput);
+        _staffPinBackspaceCommand = new RelayCommand(StaffPinBackspace);
+        _staffPinClearCommand = new RelayCommand(StaffPinClear);
+        _staffPinConfirmCommand = new RelayCommand(StaffPinConfirm);
+        _staffPinCancelCommand = new RelayCommand(StaffPinCancel);
+        ToggleStaffMenuCommand = _toggleStaffMenuCommand;
+        StaffPinInputCommand = _staffPinInputCommand;
+        StaffPinBackspaceCommand = _staffPinBackspaceCommand;
+        StaffPinClearCommand = _staffPinClearCommand;
+        StaffPinConfirmCommand = _staffPinConfirmCommand;
+        StaffPinCancelCommand = _staffPinCancelCommand;
 
         CardTestOptions = BuildCardTestOptions();
         StandardCardTests = CardTestOptions.Where(option => option.Category == "Standard").ToList();
@@ -160,6 +185,12 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     public ICommand SimulateProcessingErrorCommand { get; }
     public ICommand BackCommand { get; }
     public ICommand CancelCommand { get; }
+    public ICommand ToggleStaffMenuCommand { get; }
+    public ICommand StaffPinInputCommand { get; }
+    public ICommand StaffPinBackspaceCommand { get; }
+    public ICommand StaffPinClearCommand { get; }
+    public ICommand StaffPinConfirmCommand { get; }
+    public ICommand StaffPinCancelCommand { get; }
 
     public string SummaryText
     {
@@ -269,6 +300,20 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         }
     }
 
+    public string CashInsertedDisplayText
+    {
+        get
+        {
+            var cashInserted = _session.Current.CashInserted;
+            var total = _session.Current.PriceTotal;
+            if (total <= 0m)
+            {
+                total = CalculateTotalPrice();
+            }
+            return $"{FormatCurrency(cashInserted)}/{FormatCurrency(total)}";
+        }
+    }
+
     public string CashErrorText
     {
         get => _cashErrorText;
@@ -287,12 +332,93 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     public bool HasCashError => !string.IsNullOrWhiteSpace(_cashErrorText);
 
+    public bool IsStaffMenuOpen
+    {
+        get => _isStaffMenuOpen;
+        private set
+        {
+            if (_isStaffMenuOpen == value)
+            {
+                return;
+            }
+
+            _isStaffMenuOpen = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsStaffMenuAuthenticated));
+            OnPropertyChanged(nameof(IsStaffPinPromptVisible));
+        }
+    }
+
+    public bool IsStaffMenuAuthenticated
+    {
+        get
+        {
+            if (!_isStaffMenuOpen)
+            {
+                return false;
+            }
+
+            // Authenticated if no PIN is configured OR PIN has been validated (cleared)
+            return string.IsNullOrWhiteSpace(_staffPin);
+        }
+    }
+
+    public bool IsStaffPinPromptVisible => _isStaffMenuOpen && !string.IsNullOrWhiteSpace(_staffPin);
+
+    public string StaffPinDisplay => new string('*', _pendingStaffPin.Length);
+
+    public string StaffPinError
+    {
+        get => _staffPinError;
+        private set
+        {
+            _staffPinError = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string? CardDeclineReason
+    {
+        get => _cardDeclineReason;
+        private set
+        {
+            _cardDeclineReason = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasCardDeclineReason));
+        }
+    }
+
+    public bool HasCardDeclineReason => !string.IsNullOrWhiteSpace(_cardDeclineReason);
+
+    public string? FramePreviewPath
+    {
+        get => _framePreviewPath;
+        private set
+        {
+            _framePreviewPath = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string QuantityText
+    {
+        get => _quantityText;
+        private set
+        {
+            _quantityText = value;
+            OnPropertyChanged();
+        }
+    }
+
     public override void OnNavigatedTo()
     {
         base.OnNavigatedTo();
         ResetTransactionTracking();
         SetPaymentMode(true);
         UpdateSummary();
+        UpdateFramePreview();
+        UpdateQuantityText();
+        CardDeclineReason = null;
     }
 
     private void UpdateSummary()
@@ -339,6 +465,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         }
 
         TotalPriceText = $"Total due: {FormatCurrency(total)}";
+        OnPropertyChanged(nameof(CashInsertedDisplayText));
         _cashAcceptor.UpdateRemainingAmount(GetRemainingDue());
     }
 
@@ -368,7 +495,8 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private bool CanInsertBill()
     {
-        return !_session.Current.IsPaid && GetRemainingDue() > 0m && IsCashActive && _settings.TestMode;
+        // Allow in test mode or when staff menu is authenticated
+        return !_session.Current.IsPaid && GetRemainingDue() > 0m && IsCashActive && (_settings.TestMode || IsStaffMenuAuthenticated);
     }
 
     private bool CanSelectCard()
@@ -409,7 +537,8 @@ public sealed class PaymentViewModel : ScreenViewModelBase
 
     private bool CanResolveCardPayment()
     {
-        return !_session.Current.IsPaid && IsCardActive && IsCardPaymentInProgress;
+        // Allow when card payment is in progress, or when staff menu is authenticated and card is active
+        return !_session.Current.IsPaid && IsCardActive && (IsCardPaymentInProgress || IsStaffMenuAuthenticated);
     }
 
     private void StartCardPayment()
@@ -426,6 +555,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             return;
         }
 
+        CardDeclineReason = null; // Clear any previous decline reason
         CardStatusText = "Waiting for card...";
         IsCardPaymentInProgress = true;
         _ = StartCardPaymentAsync(amount);
@@ -502,6 +632,7 @@ public sealed class PaymentViewModel : ScreenViewModelBase
         {
             IsCardPaymentInProgress = false;
             var reason = string.IsNullOrWhiteSpace(e.Message) ? "declined" : e.Message;
+            CardDeclineReason = reason;
             CardStatusText = "Card declined. Try again or use cash.";
             KawaiiStudio.App.App.Log($"CARD_PAYMENT_DECLINED amount={e.Amount:0.00} reason={reason}");
         });
@@ -559,7 +690,40 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             return;
         }
 
+        // If staff menu is authenticated and test mode is disabled, directly add cash
+        // This bypasses the real cash acceptor provider which doesn't support manual simulation
+        if (IsStaffMenuAuthenticated && !_settings.TestMode)
+        {
+            HandleBillAcceptedDirectly(amount);
+            return;
+        }
+
         _cashAcceptor.SimulateBillInserted(amount);
+    }
+
+    private void HandleBillAcceptedDirectly(int amount)
+    {
+        _lastCashRejectReason = null;
+        CashErrorText = string.Empty;
+        _session.Current.AddCash(amount);
+        // UpdateCashStatus() calls _cashAcceptor.UpdateRemainingAmount() to keep
+        // the physical cash reader synchronized with manually added cash.
+        // This ensures that when a real bill is inserted, the reader knows the
+        // updated remaining amount and processes each bill individually.
+        UpdateCashStatus();
+        KawaiiStudio.App.App.Log($"PAYMENT_BILL_ACCEPTED amount={amount:0.00} total={_session.Current.CashInserted:0.00} (staff_manual)");
+
+        var total = _session.Current.PriceTotal;
+        if (total <= 0m)
+        {
+            total = CalculateTotalPrice();
+        }
+
+        if (total > 0m && _session.Current.CashInserted >= total)
+        {
+            RecordCashPayment(GetCashAmountToRecord());
+            MarkPaid();
+        }
     }
 
     private void HandleBillAccepted(object? sender, CashAcceptorEventArgs e)
@@ -612,9 +776,44 @@ public sealed class PaymentViewModel : ScreenViewModelBase
     private void MarkPaid()
     {
         // Create session only after payment is confirmed
+        // IMPORTANT: Preserve session configuration (Size, Layout, Category, Frame) when initializing
         if (string.IsNullOrWhiteSpace(_session.Current.SessionId))
         {
+            // Preserve configuration before reset
+            var preservedSize = _session.Current.Size;
+            var preservedQuantity = _session.Current.Quantity;
+            var preservedLayout = _session.Current.Layout;
+            var preservedCategory = _session.Current.Category;
+            var preservedFrame = _session.Current.Frame;
+            var preservedPriceTotal = _session.Current.PriceTotal;
+
             _session.StartNewSession();
+
+            // Restore configuration after reset
+            if (preservedSize.HasValue)
+            {
+                _session.Current.SetSize(preservedSize.Value);
+            }
+            if (preservedQuantity.HasValue)
+            {
+                _session.Current.SetQuantity(preservedQuantity.Value);
+            }
+            if (preservedLayout.HasValue)
+            {
+                _session.Current.SetLayout(preservedLayout.Value);
+            }
+            if (preservedCategory != null)
+            {
+                _session.Current.SetCategory(preservedCategory);
+            }
+            if (preservedFrame != null)
+            {
+                _session.Current.SetFrame(preservedFrame);
+            }
+            if (preservedPriceTotal > 0m)
+            {
+                _session.Current.SetPriceTotal(preservedPriceTotal);
+            }
         }
         
         _session.Current.MarkPaid();
@@ -884,6 +1083,140 @@ public sealed class PaymentViewModel : ScreenViewModelBase
             new("Error", "Processing error", "4000000000000119"),
             new("Error", "Refund fail (JS only)", "4000000000005126")
         };
+    }
+
+    private void UpdateFramePreview()
+    {
+        FramePreviewPath = _session.Current.Frame?.FilePath;
+    }
+
+    private void UpdateQuantityText()
+    {
+        var quantity = _session.Current.Quantity ?? 0;
+        QuantityText = quantity.ToString();
+    }
+
+    private void ToggleStaffMenu()
+    {
+        if (_isStaffMenuOpen)
+        {
+            CloseStaffMenu();
+            return;
+        }
+
+        _settings.Reload();
+        var configuredPin = _settings.StaffPin;
+        if (string.IsNullOrWhiteSpace(configuredPin))
+        {
+            // No PIN configured, open menu directly
+            _staffPin = string.Empty;
+            IsStaffMenuOpen = true;
+            OnPropertyChanged(nameof(IsStaffMenuAuthenticated));
+            OnPropertyChanged(nameof(IsStaffPinPromptVisible));
+            UpdateInsertCommandState();
+            return;
+        }
+
+        _staffPin = configuredPin.Trim();
+        SetPendingStaffPin(string.Empty);
+        StaffPinError = string.Empty;
+        IsStaffMenuOpen = true;
+        OnPropertyChanged(nameof(IsStaffMenuAuthenticated));
+        OnPropertyChanged(nameof(IsStaffPinPromptVisible));
+    }
+
+    private void StaffPinInput(string input)
+    {
+        if (!_isStaffMenuOpen || string.IsNullOrWhiteSpace(input))
+        {
+            return;
+        }
+
+        var digit = input.Trim();
+        if (digit.Length != 1 || digit[0] < '0' || digit[0] > '9')
+        {
+            return;
+        }
+
+        SetPendingStaffPin(_pendingStaffPin + digit);
+        StaffPinError = string.Empty;
+    }
+
+    private void StaffPinBackspace()
+    {
+        if (!_isStaffMenuOpen || _pendingStaffPin.Length == 0)
+        {
+            return;
+        }
+
+        SetPendingStaffPin(_pendingStaffPin[..^1]);
+        StaffPinError = string.Empty;
+    }
+
+    private void StaffPinClear()
+    {
+        if (!_isStaffMenuOpen)
+        {
+            return;
+        }
+
+        SetPendingStaffPin(string.Empty);
+        StaffPinError = string.Empty;
+    }
+
+    private void StaffPinConfirm()
+    {
+        if (!_isStaffMenuOpen)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_staffPin))
+        {
+            // No PIN configured, allow access
+            _staffPin = string.Empty;
+            return;
+        }
+
+        if (string.Equals(_pendingStaffPin, _staffPin, StringComparison.Ordinal))
+        {
+            _staffPin = string.Empty; // Clear PIN to indicate authenticated
+            StaffPinError = string.Empty;
+            OnPropertyChanged(nameof(IsStaffMenuAuthenticated));
+            OnPropertyChanged(nameof(IsStaffPinPromptVisible));
+            UpdateInsertCommandState();
+            return;
+        }
+
+        StaffPinError = "Incorrect PIN";
+        SetPendingStaffPin(string.Empty);
+    }
+
+    private void StaffPinCancel()
+    {
+        if (!_isStaffMenuOpen)
+        {
+            return;
+        }
+
+        CloseStaffMenu();
+    }
+
+    private void CloseStaffMenu()
+    {
+        _staffPin = string.Empty;
+        SetPendingStaffPin(string.Empty);
+        StaffPinError = string.Empty;
+        IsStaffMenuOpen = false;
+        OnPropertyChanged(nameof(IsStaffMenuAuthenticated));
+        OnPropertyChanged(nameof(IsStaffPinPromptVisible));
+        UpdateInsertCommandState();
+    }
+
+    private void SetPendingStaffPin(string value)
+    {
+        _pendingStaffPin = value ?? string.Empty;
+        OnPropertyChanged(nameof(StaffPinDisplay));
     }
 
     public sealed class CardTestOption

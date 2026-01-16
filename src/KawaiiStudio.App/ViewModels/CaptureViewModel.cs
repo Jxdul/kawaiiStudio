@@ -38,6 +38,8 @@ public sealed class CaptureViewModel : ScreenViewModelBase
     private string _progressText = "Shots: 0 / 8";
     private string _buttonText = "Start Capture";
     private ImageSource? _liveViewImage;
+    private int _imagesRemaining = ShotCount;
+    private bool _showStartButton = true;
 
     public CaptureViewModel(
         NavigationService navigation,
@@ -101,6 +103,26 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         }
     }
 
+    public int ImagesRemaining
+    {
+        get => _imagesRemaining;
+        private set
+        {
+            _imagesRemaining = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool ShowStartButton
+    {
+        get => _showStartButton;
+        private set
+        {
+            _showStartButton = value;
+            OnPropertyChanged();
+        }
+    }
+
     public override void OnNavigatedTo()
     {
         base.OnNavigatedTo();
@@ -116,6 +138,8 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         StatusText = "Ready to capture 8 photos";
         ProgressText = "Shots: 0 / 8";
         CaptureButtonText = "Start Capture";
+        ImagesRemaining = ShotCount;
+        ShowStartButton = true;
         _continueCommand.RaiseCanExecuteChanged();
     }
 
@@ -210,10 +234,12 @@ public sealed class CaptureViewModel : ScreenViewModelBase
         }
 
         _isCapturing = true;
+        ShowStartButton = false;
         _continueCommand.RaiseCanExecuteChanged();
         ResetPreviewFrames();
         _session.Current.ClearCapturedPhotos();
         _session.Current.ClearSelectedMapping();
+        ImagesRemaining = ShotCount;
         _captureCts = new CancellationTokenSource();
         var token = _captureCts.Token;
 
@@ -254,6 +280,9 @@ public sealed class CaptureViewModel : ScreenViewModelBase
                 token.ThrowIfCancellationRequested();
                 StatusText = $"Capturing photo {shotIndex} of {ShotCount}";
                 ProgressText = $"Shots: {shotIndex} / {ShotCount}";
+                
+                // Update images remaining (how many will remain after this shot)
+                ImagesRemaining = ShotCount - shotIndex;
 
                 var path = BuildShotPath(shotIndex);
                 if (!string.IsNullOrWhiteSpace(path))
@@ -267,6 +296,7 @@ public sealed class CaptureViewModel : ScreenViewModelBase
                         {
                             _session.RegisterCapturedPhoto(resolvedPath);
                             KawaiiStudio.App.App.Log($"CAPTURE_SHOT index={shotIndex} file={Path.GetFileName(resolvedPath)}");
+                            // Images remaining already updated before capture
                         }
                         else
                         {

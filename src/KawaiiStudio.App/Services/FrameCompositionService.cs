@@ -51,31 +51,23 @@ public sealed class FrameCompositionService
         if (template is null)
         {
             error = $"Template not found: {templateType}";
+            KawaiiStudio.App.App.Log($"RENDER_COMPOSITE_ERROR: {error}");
             return null;
         }
 
         if (template.Canvas.Width <= 0 || template.Canvas.Height <= 0)
         {
             error = $"Template canvas invalid: {templateType}";
-            return null;
-        }
-
-        if (template.Slots.Count == 0)
-        {
-            error = $"Template slots missing: {templateType}";
+            KawaiiStudio.App.App.Log($"RENDER_COMPOSITE_ERROR: {error}");
             return null;
         }
 
         var width = template.Canvas.Width;
         var height = template.Canvas.Height;
 
+        KawaiiStudio.App.App.Log($"RENDER_COMPOSITE: template={templateType} slots={template.Slots.Count} canvas={width}x{height}");
         var slots = ResolveSlots(session, template);
-        if (slots.Count == 0)
-        {
-            error = $"Template slots missing: {templateType}";
-            return null;
-        }
-
+        KawaiiStudio.App.App.Log($"RENDER_COMPOSITE: resolved slots={slots.Count}");
         var qrSlot = ResolveQrSlot(session, template);
 
         var visual = new DrawingVisual();
@@ -83,14 +75,19 @@ public sealed class FrameCompositionService
         {
             context.DrawRectangle(Brushes.Black, null, new Rect(0, 0, width, height));
 
-            for (var i = 0; i < slots.Count; i++)
+            // Draw slots if available
+            if (slots.Count > 0)
             {
-                var slotIndex = i + 1;
-                var slot = slots[i];
-                var rect = new Rect(slot.X, slot.Y, slot.Width, slot.Height);
-                DrawSlot(context, session, slotIndex, rect);
+                for (var i = 0; i < slots.Count; i++)
+                {
+                    var slotIndex = i + 1;
+                    var slot = slots[i];
+                    var rect = new Rect(slot.X, slot.Y, slot.Width, slot.Height);
+                    DrawSlot(context, session, slotIndex, rect);
+                }
             }
 
+            // Always draw frame overlay if frame is set, even if slots aren't configured
             DrawFrameOverlay(context, session, width, height);
             if (includeQr)
             {
@@ -206,15 +203,27 @@ public sealed class FrameCompositionService
     private void DrawFrameOverlay(DrawingContext context, SessionState session, int width, int height)
     {
         var framePath = session.Frame?.FilePath;
-        if (string.IsNullOrWhiteSpace(framePath) || !File.Exists(framePath))
+        if (string.IsNullOrWhiteSpace(framePath))
         {
+            KawaiiStudio.App.App.Log($"DRAW_FRAME_OVERLAY: framePath is null or empty, Frame={session.Frame?.Name ?? "null"}");
+            return;
+        }
+
+        if (!File.Exists(framePath))
+        {
+            KawaiiStudio.App.App.Log($"DRAW_FRAME_OVERLAY: file does not exist: {framePath}");
             return;
         }
 
         var overlay = LoadBitmap(framePath);
         if (overlay is not null)
         {
+            KawaiiStudio.App.App.Log($"DRAW_FRAME_OVERLAY: drawing frame {session.Frame?.Name} at {width}x{height}, image size={overlay.PixelWidth}x{overlay.PixelHeight}");
             context.DrawImage(overlay, new Rect(0, 0, width, height));
+        }
+        else
+        {
+            KawaiiStudio.App.App.Log($"DRAW_FRAME_OVERLAY: failed to load bitmap from {framePath}");
         }
     }
 
@@ -271,15 +280,42 @@ public sealed class FrameCompositionService
 
     private IReadOnlyList<TemplateSlot> ResolveSlots(SessionState session, TemplateDefinition template)
     {
+        // Default: Always use template slots from templates.json
+        // Frame overrides (.layout.json) are optional - only use if they exist, are valid, and match slot count
         var framePath = session.Frame?.FilePath;
-        if (!string.IsNullOrWhiteSpace(framePath)
-            && _frameOverrides.TryLoad(framePath, out var overrideDefinition)
-            && overrideDefinition is not null
-            && overrideDefinition.Slots.Count == template.Slots.Count)
+        
+        if (string.IsNullOrWhiteSpace(framePath))
         {
-            return overrideDefinition.Slots;
+            // No frame selected - use template slots from templates.json
+            KawaiiStudio.App.App.Log($"RESOLVE_SLOTS: no frame, using template slots={template.Slots.Count} for template={template.Key}");
+            return template.Slots;
         }
 
+        // Try to load frame override (.layout.json)
+        if (_frameOverrides.TryLoad(framePath, out var overrideDefinition)
+            && overrideDefinition is not null
+            && overrideDefinition.Slots.Count > 0)
+        {
+            // Check if override slot count matches template slot count
+            if (overrideDefinition.Slots.Count == template.Slots.Count)
+            {
+                // Override exists and matches - use it
+                KawaiiStudio.App.App.Log($"RESOLVE_SLOTS: using frame override from {framePath}, slots={overrideDefinition.Slots.Count}");
+                return overrideDefinition.Slots;
+            }
+            else
+            {
+                // Override exists but slot count doesn't match - fall back to template
+                KawaiiStudio.App.App.Log($"RESOLVE_SLOTS: override slot count mismatch (override={overrideDefinition.Slots.Count}, template={template.Slots.Count}), using template slots from templates.json");
+            }
+        }
+        else
+        {
+            // No valid override file - use template slots from templates.json
+            KawaiiStudio.App.App.Log($"RESOLVE_SLOTS: no .layout.json override found for {framePath}, using template slots={template.Slots.Count} from templates.json");
+        }
+
+        // Always fall back to template slots from templates.json
         return template.Slots;
     }
 

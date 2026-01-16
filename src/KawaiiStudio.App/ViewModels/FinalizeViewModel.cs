@@ -1,6 +1,6 @@
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Input;
 using KawaiiStudio.App.Services;
 
 namespace KawaiiStudio.App.ViewModels;
@@ -8,14 +8,14 @@ namespace KawaiiStudio.App.ViewModels;
 public sealed class FinalizeViewModel : ScreenViewModelBase
 {
     private const int ExpectedShotCount = 8;
+    private const int AutoNavigateDelayMilliseconds = 1000;
     private readonly NavigationService _navigation;
     private readonly SessionService _session;
     private readonly FrameCompositionService _composer;
     private readonly VideoCompilationService _videoCompiler;
     private readonly UploadService _uploadService;
-    private readonly RelayCommand _continueCommand;
+    private CancellationTokenSource? _cts;
     private string _statusText = "Preparing output...";
-    private bool _canContinue;
 
     public FinalizeViewModel(
         NavigationService navigation,
@@ -31,13 +31,7 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
         _composer = composer;
         _videoCompiler = videoCompiler;
         _uploadService = uploadService;
-        _continueCommand = new RelayCommand(() => _navigation.Navigate("printing"), () => _canContinue);
-        ContinueCommand = _continueCommand;
-        BackCommand = new RelayCommand(() => _navigation.Navigate("review"));
     }
-
-    public ICommand ContinueCommand { get; }
-    public ICommand BackCommand { get; }
 
     public string StatusText
     {
@@ -58,14 +52,16 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
 
     private async void RenderComposite()
     {
-        _canContinue = false;
-        _continueCommand.RaiseCanExecuteChanged();
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
 
         var outputPaths = BuildOutputPaths();
         if (outputPaths is null)
         {
             StatusText = "Session output folder missing.";
             KawaiiStudio.App.App.Log("FINALIZE_COMPOSITE_FAILED reason=missing_session_folder");
+            // Auto-navigate even on failure
+            await AutoNavigateAfterDelay();
             return;
         }
 
@@ -132,13 +128,32 @@ public sealed class FinalizeViewModel : ScreenViewModelBase
                 KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_FAILED reason={qrError}");
             }
 
-            _canContinue = true;
-            _continueCommand.RaiseCanExecuteChanged();
+            // Auto-navigate after processing completes
+            await AutoNavigateAfterDelay();
             return;
         }
 
         StatusText = error ?? "Composite failed.";
         KawaiiStudio.App.App.Log($"FINALIZE_COMPOSITE_FAILED reason={error}");
+        // Auto-navigate even on failure
+        await AutoNavigateAfterDelay();
+    }
+
+    private async Task AutoNavigateAfterDelay()
+    {
+        var token = _cts?.Token ?? CancellationToken.None;
+        try
+        {
+            await Task.Delay(AutoNavigateDelayMilliseconds, token);
+            if (!token.IsCancellationRequested)
+            {
+                _navigation.Navigate("printing");
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore navigation cancellation.
+        }
     }
 
     private (string withQr, string withoutQr)? BuildOutputPaths()

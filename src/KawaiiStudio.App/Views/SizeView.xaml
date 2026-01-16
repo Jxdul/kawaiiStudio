@@ -10,12 +10,187 @@
     <Rectangle Fill="#CCF6F2EA" />
     <Grid Margin="24">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Text="Choose Print Size" FontSize="32" FontWeight="SemiBold" Margin="0,0,0,16" />
+        <TextBlock Text="Choose Print Size" FontSize="32" FontWeight="SemiBold" Margin="0,0,0,32" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-          <Button Content="2x6" Command="{Binding SelectSizeCommand}" CommandParameter="{x:Static models:PrintSize.TwoBySix}" FontSize="20" Padding="24,10" />
-          <Button Content="4x6" Command="{Binding SelectSizeCommand}" CommandParameter="{x:Static models:PrintSize.FourBySix}" FontSize="20" Padding="24,10" />
+          <!-- 2x6 Button with Frame Preview -->
+          <Button Command="{Binding SelectSizeCommand}" CommandParameter="{x:Static models:PrintSize.TwoBySix}" 
+                  Padding="0" Background="#EEE7DD" BorderThickness="0" Cursor="Hand" Margin="0,0,48,0" Width="500">
+            <Button.Effect>
+              <DropShadowEffect Color="#40000000" BlurRadius="8" ShadowDepth="4" />
+            </Button.Effect>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="12"
+                              Padding="{TemplateBinding Padding}"
+                              Width="500">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5EEDD" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#50000000" BlurRadius="10" ShadowDepth="5" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#30000000" BlurRadius="6" ShadowDepth="2" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+            <StackPanel>
+              <Border CornerRadius="12" Padding="24" Width="500" Height="700" Background="Transparent">
+                <Grid>
+                  <Image x:Name="TwoBySixImage"
+                         Source="{Binding CurrentTwoBySixFrame, Converter={StaticResource FilePathToImage}}" 
+                         Stretch="Uniform"
+                         Opacity="1.0" />
+                  <TextBlock Text="No preview available" 
+                           FontSize="14" Foreground="#B8B8B8" 
+                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding CurrentTwoBySixFrame}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Visible" />
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding CurrentTwoBySixFrame}" Value="">
+                            <Setter Property="Visibility" Value="Visible" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Grid>
+              </Border>
+              <TextBlock Text="2x6" FontSize="36" FontWeight="SemiBold" 
+                       HorizontalAlignment="Center" Margin="0,24,0,0" />
+            </StackPanel>
+          </Button>
+
+          <!-- 4x6 Button with Frame Preview -->
+          <Button Command="{Binding SelectSizeCommand}" CommandParameter="{x:Static models:PrintSize.FourBySix}" 
+                  Padding="0" Background="#EEE7DD" BorderThickness="0" Cursor="Hand" Width="500">
+            <Button.Effect>
+              <DropShadowEffect Color="#40000000" BlurRadius="8" ShadowDepth="4" />
+            </Button.Effect>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="12"
+                              Padding="{TemplateBinding Padding}"
+                              Width="500">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5EEDD" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#50000000" BlurRadius="10" ShadowDepth="5" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#30000000" BlurRadius="6" ShadowDepth="2" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+            <StackPanel>
+              <Border CornerRadius="12" Padding="24" Width="500" Height="700" Background="Transparent">
+                <Grid>
+                  <Image x:Name="FourBySixImage"
+                         Source="{Binding CurrentFourBySixFrame, Converter={StaticResource FilePathToImage}}" 
+                         Stretch="Uniform"
+                         Opacity="1.0" />
+                  <TextBlock Text="No preview available" 
+                           FontSize="14" Foreground="#B8B8B8" 
+                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding CurrentFourBySixFrame}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Visible" />
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding CurrentFourBySixFrame}" Value="">
+                            <Setter Property="Visibility" Value="Visible" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Grid>
+              </Border>
+              <TextBlock Text="4x6" FontSize="36" FontWeight="SemiBold" 
+                       HorizontalAlignment="Center" Margin="0,24,0,0" />
+            </StackPanel>
+          </Button>
         </StackPanel>
-        <Button Content="Back" Command="{Binding BackCommand}" Margin="0,16,0,0" />
+        <Button Content="Back" 
+                Command="{Binding BackCommand}" 
+                Margin="0,32,0,0"
+                Padding="24,12"
+                Background="#E7DFD6"
+                Foreground="#333333"
+                BorderThickness="0"
+                FontSize="18"
+                FontWeight="SemiBold"
+                Cursor="Hand">
+          <Button.Effect>
+            <DropShadowEffect Color="#20000000" BlurRadius="6" ShadowDepth="3" />
+          </Button.Effect>
+          <Button.Style>
+            <Style TargetType="Button">
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+              <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter Property="Background" Value="#DDD5CC" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter Property="Background" Value="#CCC4BB" />
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </Button.Style>
+        </Button>
       </StackPanel>
     </Grid>
     <Button Command="{Binding StaffCommand}"

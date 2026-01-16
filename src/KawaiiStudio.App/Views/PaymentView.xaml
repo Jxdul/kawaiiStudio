@@ -14,77 +14,882 @@
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
-      <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,16">
-        <Button Content="Back" Command="{Binding BackCommand}" />
-        <TextBlock Text="Payment" FontSize="28" FontWeight="SemiBold" Margin="16,0,0,0" />
-      </DockPanel>
+      <Grid Grid.Row="0" Margin="0,0,0,24">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Button Grid.Column="0"
+                Content="Back" 
+                Command="{Binding BackCommand}"
+                Padding="32,16"
+                FontSize="24"
+                Background="#E7DFD6"
+                Foreground="#333333"
+                BorderThickness="0"
+                FontWeight="SemiBold"
+                Cursor="Hand">
+          <Button.Effect>
+            <DropShadowEffect Color="#20000000" BlurRadius="6" ShadowDepth="3" />
+          </Button.Effect>
+          <Button.Style>
+            <Style TargetType="Button">
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+              <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter Property="Background" Value="#DDD5CC" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter Property="Background" Value="#CCC4BB" />
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </Button.Style>
+        </Button>
+        <TextBlock Grid.Column="1"
+                   Text="Payment" 
+                   FontSize="40" 
+                   FontWeight="SemiBold" 
+                   Margin="24,0,0,0"
+                   VerticalAlignment="Center" />
+        <Button Grid.Column="2"
+                Command="{Binding ToggleStaffMenuCommand}"
+                Width="50"
+                Height="50"
+                Background="Transparent"
+                BorderThickness="0"
+                Opacity="0"
+                Cursor="Hand" />
+      </Grid>
 
       <Grid Grid.Row="1">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="260" />
+          <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <Border Background="#EEE7DD" CornerRadius="10" Padding="16" Margin="0,0,16,0">
-          <StackPanel>
-            <TextBlock Text="Order Summary" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
-            <TextBlock Text="{Binding SummaryText}" FontSize="14" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding IsPaid, StringFormat=Paid: {0}}" FontSize="12" Foreground="#B8B8B8" Margin="0,12,0,0" />
-          </StackPanel>
+        <!-- Frame Preview Section -->
+        <Border Grid.Column="0"
+                Background="#EEE7DD" 
+                CornerRadius="12" 
+                Padding="16" 
+                Margin="0,0,24,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                MaxWidth="800">
+          <Border.Effect>
+            <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+          </Border.Effect>
+          <Image Source="{Binding FramePreviewPath, Converter={StaticResource FilePathToImage}}" 
+                 Stretch="Uniform"
+                 MaxHeight="700"
+                 HorizontalAlignment="Center" />
         </Border>
 
-        <StackPanel Grid.Column="1">
-          <TextBlock Text="{Binding PromptText}" FontSize="14" Foreground="#B8B8B8" TextWrapping="Wrap" Margin="0,0,0,12" />
-          <Button Content="Card Payment" Command="{Binding SelectCardCommand}" FontSize="16" Padding="16,8" Margin="0,0,0,8" />
-          <Button Content="Use Cash" Command="{Binding SelectCashCommand}"
-                  FontSize="16" Padding="16,8" Margin="0,0,0,16"
-                  Visibility="{Binding IsCardActive, Converter={StaticResource BoolToVisibility}}" />
-          <Button Content="Cancel" Command="{Binding CancelCommand}" />
-        </StackPanel>
+        <!-- Empty space where payment buttons were -->
       </Grid>
 
       <Grid Grid.Row="2" Margin="0,16,0,0">
-        <Border Background="#EEE7DD" CornerRadius="10" Padding="16"
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Cash Payment Info Square -->
+        <Border Grid.Column="0"
+                Background="#EEE7DD" 
+                CornerRadius="12" 
+                Padding="24"
+                Width="280"
+                Height="280"
+                Margin="0,0,24,0"
                 Visibility="{Binding IsCashActive, Converter={StaticResource BoolToVisibility}}">
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
-              <Border Background="#FDE7E7" BorderBrush="#E2A1A1" BorderThickness="1"
-                      CornerRadius="6" Padding="8" Margin="0,0,0,8"
-                      Visibility="{Binding HasCashError, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="{Binding CashErrorText}" FontSize="12" Foreground="#9A2A2A" TextWrapping="Wrap" />
-              </Border>
-              <TextBlock Text="Cash" FontSize="18" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding CashStatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,8,0,0" />
-              <TextBlock Text="{Binding TotalPriceText}" FontSize="12" Foreground="#8A8A8A" Margin="0,2,0,0" />
-              <TextBlock Text="{Binding CashDenominationsText}" FontSize="12" Foreground="#8A8A8A" Margin="0,2,0,0" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-              <Button Content="$5" Command="{Binding InsertFiveCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
-              <Button Content="$10" Command="{Binding InsertTenCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
-              <Button Content="$20" Command="{Binding InsertTwentyCommand}" FontSize="16" Padding="14,8" />
-            </StackPanel>
-          </Grid>
+          <Border.Effect>
+            <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+          </Border.Effect>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Total due:" 
+                       FontSize="16" 
+                       FontWeight="SemiBold" 
+                       Foreground="#333333"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,16" />
+            <Border Background="#E2D9CF" 
+                    CornerRadius="8" 
+                    Padding="16"
+                    Margin="0,0,0,16">
+              <TextBlock Text="{Binding CashInsertedDisplayText}" 
+                         FontSize="32" 
+                         FontWeight="Bold" 
+                         Foreground="#333333"
+                         HorizontalAlignment="Center" />
+            </Border>
+            <TextBlock Text="{Binding CashDenominationsText}" 
+                       FontSize="14" 
+                       Foreground="#8A8A8A" 
+                       HorizontalAlignment="Center"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center" />
+            <Border Background="#FDE7E7" BorderBrush="#E2A1A1" BorderThickness="1"
+                    CornerRadius="6" Padding="8" Margin="0,12,0,0"
+                    Visibility="{Binding HasCashError, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="{Binding CashErrorText}" FontSize="12" Foreground="#9A2A2A" TextWrapping="Wrap" />
+            </Border>
+          </StackPanel>
         </Border>
 
-        <Border Background="#EEE7DD" CornerRadius="10" Padding="16"
+        <!-- Card Payment Info Square -->
+        <Border Grid.Column="0"
+                Background="#EEE7DD" 
+                CornerRadius="12" 
+                Padding="24"
+                Width="280"
+                Height="280"
+                Margin="0,0,24,0"
                 Visibility="{Binding IsCardActive, Converter={StaticResource BoolToVisibility}}">
-          <StackPanel>
-            <TextBlock Text="Card Payment" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding CardStatusText}" FontSize="14" Foreground="#B8B8B8" Margin="0,8,0,0" />
-            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+          <Border.Effect>
+            <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+          </Border.Effect>
+          <StackPanel VerticalAlignment="Center">
+            <Border Background="#FDE7E7" BorderBrush="#E2A1A1" BorderThickness="1"
+                    CornerRadius="6" Padding="8" Margin="0,0,0,16"
+                    Visibility="{Binding HasCardDeclineReason, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="{Binding CardDeclineReason}" FontSize="12" Foreground="#9A2A2A" TextWrapping="Wrap" />
+            </Border>
+            <TextBlock Text="Card Payment" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,8" />
+            <TextBlock Text="{Binding CardStatusText}" FontSize="14" Foreground="#B8B8B8" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,16" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
               <Button Content="Start" Command="{Binding StartCardPaymentCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
               <Button Content="Approve" Command="{Binding ApproveCardPaymentCommand}" FontSize="16" Padding="14,8" Margin="0,0,8,0" />
               <Button Content="Decline" Command="{Binding DeclineCardPaymentCommand}" FontSize="16" Padding="14,8" />
             </StackPanel>
-            <StackPanel Margin="0,12,0,0"
-                        Visibility="{Binding IsCardTestMode, Converter={StaticResource BoolToVisibility}}">
-              <TextBlock Text="Simulator tests" FontSize="12" Foreground="#8A8A8A" Margin="0,0,0,8" />
-              <TextBlock Text="Standard cards" FontSize="11" Foreground="#8A8A8A" Margin="0,0,0,6" />
-              <ItemsControl ItemsSource="{Binding StandardCardTests}">
+          </StackPanel>
+        </Border>
+
+        <!-- Payment Method Selection Buttons -->
+        <StackPanel Grid.Column="2" 
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Right">
+          <Button Content="Card Payment" 
+                  Command="{Binding SelectCardCommand}" 
+                  FontSize="20" 
+                  Padding="24,16" 
+                  Margin="0,0,0,12"
+                  Background="#EEE7DD"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  FontWeight="SemiBold"
+                  Cursor="Hand">
+            <Button.Effect>
+              <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+            </Button.Effect>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="12"
+                              Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsCardActive}" Value="False">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5EEDD" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#50000000" BlurRadius="14" ShadowDepth="7" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#30000000" BlurRadius="8" ShadowDepth="4" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+          <Button Content="Use Cash" 
+                  Command="{Binding SelectCashCommand}"
+                  FontSize="20" 
+                  Padding="24,16" 
+                  Margin="0,0,0,16"
+                  Background="#EEE7DD"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  FontWeight="SemiBold"
+                  Cursor="Hand">
+            <Button.Effect>
+              <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+            </Button.Effect>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="12"
+                              Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsCashActive}" Value="False">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5EEDD" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#50000000" BlurRadius="14" ShadowDepth="7" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#30000000" BlurRadius="8" ShadowDepth="4" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+          <Button Content="Cancel" 
+                  Command="{Binding CancelCommand}"
+                  FontSize="18"
+                  Padding="20,12"
+                  Background="#E7DFD6"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  FontWeight="SemiBold"
+                  Cursor="Hand">
+            <Button.Effect>
+              <DropShadowEffect Color="#20000000" BlurRadius="6" ShadowDepth="3" />
+            </Button.Effect>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="8"
+                              Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#CCC4BB" />
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <Grid Grid.Row="2" Margin="0,16,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Copies to Print Section -->
+        <Border Grid.Column="0"
+                Background="#EEE7DD" 
+                CornerRadius="12" 
+                Padding="24"
+                Width="280"
+                Height="280"
+                Margin="0,0,24,0">
+          <Border.Effect>
+            <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+          </Border.Effect>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Copies to print" 
+                       FontSize="16" 
+                       FontWeight="SemiBold" 
+                       Foreground="#333333"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,16" />
+            <Border Background="#E2D9CF" 
+                    CornerRadius="8" 
+                    Padding="16"
+                    Margin="0,0,0,16">
+              <TextBlock Text="{Binding QuantityText}" 
+                         FontSize="48" 
+                         FontWeight="Bold" 
+                         Foreground="#333333"
+                         HorizontalAlignment="Center" />
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- Payment Method Selection Buttons (Bottom Middle) -->
+        <StackPanel Grid.Column="1" 
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+          <Button Content="Card Payment" 
+                  Command="{Binding SelectCardCommand}" 
+                  FontSize="20" 
+                  Padding="24,16" 
+                  Margin="0,0,0,12"
+                  Background="#EEE7DD"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  FontWeight="SemiBold"
+                  Cursor="Hand">
+            <Button.Effect>
+              <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+            </Button.Effect>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="12"
+                              Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsCardActive}" Value="False">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5EEDD" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#50000000" BlurRadius="14" ShadowDepth="7" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#30000000" BlurRadius="8" ShadowDepth="4" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+          <Button Content="Use Cash" 
+                  Command="{Binding SelectCashCommand}"
+                  FontSize="20" 
+                  Padding="24,16" 
+                  Margin="0,0,0,16"
+                  Background="#EEE7DD"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  FontWeight="SemiBold"
+                  Cursor="Hand">
+            <Button.Effect>
+              <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+            </Button.Effect>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="12"
+                              Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsCashActive}" Value="False">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5EEDD" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#50000000" BlurRadius="14" ShadowDepth="7" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                    <Setter Property="Effect">
+                      <Setter.Value>
+                        <DropShadowEffect Color="#30000000" BlurRadius="8" ShadowDepth="4" />
+                      </Setter.Value>
+                    </Setter>
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+          <Button Content="Cancel" 
+                  Command="{Binding CancelCommand}"
+                  FontSize="18"
+                  Padding="20,12"
+                  Background="#E7DFD6"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  FontWeight="SemiBold"
+                  Cursor="Hand">
+            <Button.Effect>
+              <DropShadowEffect Color="#20000000" BlurRadius="6" ShadowDepth="3" />
+            </Button.Effect>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border Background="{TemplateBinding Background}"
+                              CornerRadius="8"
+                              Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#DDD5CC" />
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#CCC4BB" />
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+        </StackPanel>
+
+        <!-- Total Due Square (Right Side) -->
+        <Border Grid.Column="2"
+                Background="#EEE7DD" 
+                CornerRadius="12" 
+                Padding="24"
+                Width="280"
+                Height="280"
+                Margin="24,0,0,0"
+                Visibility="{Binding IsCashActive, Converter={StaticResource BoolToVisibility}}">
+          <Border.Effect>
+            <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+          </Border.Effect>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Total due:" 
+                       FontSize="16" 
+                       FontWeight="SemiBold" 
+                       Foreground="#333333"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,16" />
+            <Border Background="#E2D9CF" 
+                    CornerRadius="8" 
+                    Padding="16"
+                    Margin="0,0,0,16">
+              <TextBlock Text="{Binding CashInsertedDisplayText}" 
+                         FontSize="32" 
+                         FontWeight="Bold" 
+                         Foreground="#333333"
+                         HorizontalAlignment="Center" />
+            </Border>
+            <TextBlock Text="{Binding CashDenominationsText}" 
+                       FontSize="14" 
+                       Foreground="#8A8A8A" 
+                       HorizontalAlignment="Center"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center" />
+            <Border Background="#FDE7E7" BorderBrush="#E2A1A1" BorderThickness="1"
+                    CornerRadius="6" Padding="8" Margin="0,12,0,0"
+                    Visibility="{Binding HasCashError, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="{Binding CashErrorText}" FontSize="12" Foreground="#9A2A2A" TextWrapping="Wrap" />
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- Card Payment Info Square (Right Side) -->
+        <Border Grid.Column="2"
+                Background="#EEE7DD" 
+                CornerRadius="12" 
+                Padding="24"
+                Width="280"
+                Height="280"
+                Margin="24,0,0,0"
+                Visibility="{Binding IsCardActive, Converter={StaticResource BoolToVisibility}}">
+          <Border.Effect>
+            <DropShadowEffect Color="#40000000" BlurRadius="12" ShadowDepth="6" />
+          </Border.Effect>
+          <StackPanel VerticalAlignment="Center">
+            <Border Background="#FDE7E7" BorderBrush="#E2A1A1" BorderThickness="1"
+                    CornerRadius="6" Padding="8" Margin="0,0,0,16"
+                    Visibility="{Binding HasCardDeclineReason, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="{Binding CardDeclineReason}" FontSize="12" Foreground="#9A2A2A" TextWrapping="Wrap" />
+            </Border>
+            <TextBlock Text="Card Payment" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,8" />
+            <TextBlock Text="{Binding CardStatusText}" FontSize="14" Foreground="#B8B8B8" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+            <Button Content="Start" 
+                    Command="{Binding StartCardPaymentCommand}" 
+                    FontSize="18" 
+                    Padding="20,12" 
+                    Margin="0,16,0,0"
+                    HorizontalAlignment="Center"
+                    Background="#EEE7DD"
+                    Foreground="#333333"
+                    BorderThickness="0"
+                    FontWeight="SemiBold"
+                    Cursor="Hand">
+              <Button.Effect>
+                <DropShadowEffect Color="#40000000" BlurRadius="8" ShadowDepth="4" />
+              </Button.Effect>
+              <Button.Style>
+                <Style TargetType="Button">
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
+                  <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                      <Setter Property="Background" Value="#F5EEDD" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                      <Setter Property="Background" Value="#DDD5CC" />
+                    </Trigger>
+                  </Style.Triggers>
+                </Style>
+              </Button.Style>
+            </Button>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- Staff Menu Overlay -->
+    <Grid Background="#CC000000"
+          Visibility="{Binding IsStaffMenuOpen, Converter={StaticResource BoolToVisibility}}"
+          Panel.ZIndex="100">
+      <Button Command="{Binding StaffPinCancelCommand}"
+              Background="Transparent"
+              BorderThickness="0" />
+      <Border Background="#F6F2EA"
+              CornerRadius="16"
+              Padding="32"
+              MaxWidth="800"
+              MaxHeight="600"
+              Panel.ZIndex="1"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <Border.Effect>
+          <DropShadowEffect Color="#60000000" BlurRadius="20" ShadowDepth="10" />
+        </Border.Effect>
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <!-- Header -->
+          <Grid Grid.Row="0" Margin="0,0,0,24">
+            <TextBlock Text="Staff Menu" FontSize="24" FontWeight="SemiBold" />
+            <Button HorizontalAlignment="Right"
+                    Content="✕"
+                    FontSize="20"
+                    Padding="12,8"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Foreground="#333333"
+                    Command="{Binding StaffPinCancelCommand}"
+                    Cursor="Hand">
+              <Button.Style>
+                <Style TargetType="Button">
+                  <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                      <Setter Property="Background" Value="#E7DFD6" />
+                    </Trigger>
+                  </Style.Triggers>
+                </Style>
+              </Button.Style>
+            </Button>
+          </Grid>
+
+          <!-- Password Prompt Section -->
+          <StackPanel Grid.Row="1"
+                      Visibility="{Binding IsStaffPinPromptVisible, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="Staff PIN" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="Enter the staff PIN to continue" FontSize="12" Foreground="#8A8A8A" Margin="0,6,0,0" />
+            <Border Background="#E2D9CF" CornerRadius="6" Padding="10" Margin="0,10,0,8">
+              <TextBlock Text="{Binding StaffPinDisplay}" FontSize="20" />
+            </Border>
+            <TextBlock Text="{Binding StaffPinError}" FontSize="12" Foreground="#B91C1C" Margin="0,0,0,8" />
+            <UniformGrid Rows="4" Columns="3" Margin="0,0,0,12">
+              <Button Content="1" Command="{Binding StaffPinInputCommand}" CommandParameter="1" Padding="12,10" />
+              <Button Content="2" Command="{Binding StaffPinInputCommand}" CommandParameter="2" Padding="12,10" />
+              <Button Content="3" Command="{Binding StaffPinInputCommand}" CommandParameter="3" Padding="12,10" />
+              <Button Content="4" Command="{Binding StaffPinInputCommand}" CommandParameter="4" Padding="12,10" />
+              <Button Content="5" Command="{Binding StaffPinInputCommand}" CommandParameter="5" Padding="12,10" />
+              <Button Content="6" Command="{Binding StaffPinInputCommand}" CommandParameter="6" Padding="12,10" />
+              <Button Content="7" Command="{Binding StaffPinInputCommand}" CommandParameter="7" Padding="12,10" />
+              <Button Content="8" Command="{Binding StaffPinInputCommand}" CommandParameter="8" Padding="12,10" />
+              <Button Content="9" Command="{Binding StaffPinInputCommand}" CommandParameter="9" Padding="12,10" />
+              <Button Content="CLR" Command="{Binding StaffPinClearCommand}" Padding="12,10" />
+              <Button Content="0" Command="{Binding StaffPinInputCommand}" CommandParameter="0" Padding="12,10" />
+              <Button Content="DEL" Command="{Binding StaffPinBackspaceCommand}" Padding="12,10" />
+            </UniformGrid>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+              <Button Content="Cancel" Command="{Binding StaffPinCancelCommand}" Padding="16,8" />
+              <Button Content="Enter" Command="{Binding StaffPinConfirmCommand}" Padding="16,8" Margin="8,0,0,0" Width="120" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Staff Features Section -->
+          <ScrollViewer Grid.Row="1"
+                        VerticalScrollBarVisibility="Auto"
+                        Visibility="{Binding IsStaffMenuAuthenticated, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+              <!-- Card Payment Controls -->
+              <TextBlock Text="Card Payment Controls" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                <Button Content="Approve" 
+                        Command="{Binding ApproveCardPaymentCommand}" 
+                        FontSize="18" 
+                        Padding="20,12" 
+                        Margin="0,0,12,0"
+                        Background="#EEE7DD"
+                        Foreground="#333333"
+                        BorderThickness="0"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                  <Button.Effect>
+                    <DropShadowEffect Color="#40000000" BlurRadius="8" ShadowDepth="4" />
+                  </Button.Effect>
+                  <Button.Style>
+                    <Style TargetType="Button">
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+                              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                      <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter Property="Background" Value="#F5EEDD" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                          <Setter Property="Background" Value="#DDD5CC" />
+                        </Trigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
+                <Button Content="Decline" 
+                        Command="{Binding DeclineCardPaymentCommand}" 
+                        FontSize="18" 
+                        Padding="20,12"
+                        Background="#EEE7DD"
+                        Foreground="#333333"
+                        BorderThickness="0"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                  <Button.Effect>
+                    <DropShadowEffect Color="#40000000" BlurRadius="8" ShadowDepth="4" />
+                  </Button.Effect>
+                  <Button.Style>
+                    <Style TargetType="Button">
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+                              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                      <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter Property="Background" Value="#F5EEDD" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                          <Setter Property="Background" Value="#DDD5CC" />
+                        </Trigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
+              </StackPanel>
+
+              <!-- Cash Denominations -->
+              <TextBlock Text="Cash Denominations" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                <Button Content="$5" 
+                        Command="{Binding InsertFiveCommand}" 
+                        FontSize="18" 
+                        Padding="20,12" 
+                        Margin="0,0,12,0"
+                        Background="#EEE7DD"
+                        Foreground="#333333"
+                        BorderThickness="0"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                  <Button.Effect>
+                    <DropShadowEffect Color="#40000000" BlurRadius="8" ShadowDepth="4" />
+                  </Button.Effect>
+                  <Button.Style>
+                    <Style TargetType="Button">
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+                              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                      <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter Property="Background" Value="#F5EEDD" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                          <Setter Property="Background" Value="#DDD5CC" />
+                        </Trigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
+                <Button Content="$10" 
+                        Command="{Binding InsertTenCommand}" 
+                        FontSize="18" 
+                        Padding="20,12" 
+                        Margin="0,0,12,0"
+                        Background="#EEE7DD"
+                        Foreground="#333333"
+                        BorderThickness="0"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                  <Button.Effect>
+                    <DropShadowEffect Color="#40000000" BlurRadius="8" ShadowDepth="4" />
+                  </Button.Effect>
+                  <Button.Style>
+                    <Style TargetType="Button">
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+                              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                      <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter Property="Background" Value="#F5EEDD" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                          <Setter Property="Background" Value="#DDD5CC" />
+                        </Trigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
+                <Button Content="$20" 
+                        Command="{Binding InsertTwentyCommand}" 
+                        FontSize="18" 
+                        Padding="20,12"
+                        Background="#EEE7DD"
+                        Foreground="#333333"
+                        BorderThickness="0"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                  <Button.Effect>
+                    <DropShadowEffect Color="#40000000" BlurRadius="8" ShadowDepth="4" />
+                  </Button.Effect>
+                  <Button.Style>
+                    <Style TargetType="Button">
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+                              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                      <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter Property="Background" Value="#F5EEDD" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                          <Setter Property="Background" Value="#DDD5CC" />
+                        </Trigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
+              </StackPanel>
+
+              <!-- Card Test Options -->
+              <TextBlock Text="Card Test Options" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+              <TextBlock Text="Standard Cards" FontSize="14" Foreground="#8A8A8A" Margin="0,0,0,8" />
+              <ItemsControl ItemsSource="{Binding StandardCardTests}" Margin="0,0,0,16">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <WrapPanel />
@@ -95,14 +900,42 @@
                     <Button Content="{Binding Label}"
                             Command="{Binding DataContext.SimulateCardOptionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}"
-                            FontSize="11"
-                            Padding="8,4"
-                            Margin="0,0,8,8" />
+                            FontSize="12"
+                            Padding="12,6"
+                            Margin="0,0,8,8"
+                            Background="#EEE7DD"
+                            Foreground="#333333"
+                            BorderThickness="0"
+                            Cursor="Hand">
+                      <Button.Style>
+                        <Style TargetType="Button">
+                          <Setter Property="Template">
+                            <Setter.Value>
+                              <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="6"
+                                        Padding="{TemplateBinding Padding}">
+                                  <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                              </ControlTemplate>
+                            </Setter.Value>
+                          </Setter>
+                          <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                              <Setter Property="Background" Value="#F5EEDD" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                              <Setter Property="Background" Value="#DDD5CC" />
+                            </Trigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Button.Style>
+                    </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Text="Success cases" FontSize="11" Foreground="#8A8A8A" Margin="0,4,0,6" />
-              <ItemsControl ItemsSource="{Binding SuccessCardTests}">
+              <TextBlock Text="Success Cases" FontSize="14" Foreground="#8A8A8A" Margin="0,0,0,8" />
+              <ItemsControl ItemsSource="{Binding SuccessCardTests}" Margin="0,0,0,16">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <WrapPanel />
@@ -113,13 +946,41 @@
                     <Button Content="{Binding Label}"
                             Command="{Binding DataContext.SimulateCardOptionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}"
-                            FontSize="11"
-                            Padding="8,4"
-                            Margin="0,0,8,8" />
+                            FontSize="12"
+                            Padding="12,6"
+                            Margin="0,0,8,8"
+                            Background="#EEE7DD"
+                            Foreground="#333333"
+                            BorderThickness="0"
+                            Cursor="Hand">
+                      <Button.Style>
+                        <Style TargetType="Button">
+                          <Setter Property="Template">
+                            <Setter.Value>
+                              <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="6"
+                                        Padding="{TemplateBinding Padding}">
+                                  <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                              </ControlTemplate>
+                            </Setter.Value>
+                          </Setter>
+                          <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                              <Setter Property="Background" Value="#F5EEDD" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                              <Setter Property="Background" Value="#DDD5CC" />
+                            </Trigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Button.Style>
+                    </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Text="Error cases" FontSize="11" Foreground="#8A8A8A" Margin="0,4,0,6" />
+              <TextBlock Text="Error Cases" FontSize="14" Foreground="#8A8A8A" Margin="0,0,0,8" />
               <ItemsControl ItemsSource="{Binding ErrorCardTests}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
@@ -131,17 +992,44 @@
                     <Button Content="{Binding Label}"
                             Command="{Binding DataContext.SimulateCardOptionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}"
-                            FontSize="11"
-                            Padding="8,4"
-                            Margin="0,0,8,8" />
+                            FontSize="12"
+                            Padding="12,6"
+                            Margin="0,0,8,8"
+                            Background="#EEE7DD"
+                            Foreground="#333333"
+                            BorderThickness="0"
+                            Cursor="Hand">
+                      <Button.Style>
+                        <Style TargetType="Button">
+                          <Setter Property="Template">
+                            <Setter.Value>
+                              <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="6"
+                                        Padding="{TemplateBinding Padding}">
+                                  <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                              </ControlTemplate>
+                            </Setter.Value>
+                          </Setter>
+                          <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                              <Setter Property="Background" Value="#F5EEDD" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                              <Setter Property="Background" Value="#DDD5CC" />
+                            </Trigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Button.Style>
+                    </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Text="Start payment first, then pick a test card." FontSize="11" Foreground="#8A8A8A" Margin="0,4,0,0" />
             </StackPanel>
-          </StackPanel>
-        </Border>
-      </Grid>
+          </ScrollViewer>
+        </Grid>
+      </Border>
     </Grid>
   </Grid>
 </UserControl>
